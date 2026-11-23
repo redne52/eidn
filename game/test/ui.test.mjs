@@ -94,4 +94,38 @@ for (const k of API) if (typeof mg.anim[k] !== 'function') bad('GLB modelinde an
 const rg = await run(mg, 'attackHeavy'); if (rg.tImpact === null) bad('GLB modelinde temas yok');
 _clearGlbs();
 
-console.log(fail ? `HATA: ${fail}` : 'ui testi geçti'); process.exit(fail ? 1 : 0);
+// Ateş Ejderhası GLB (iskeletsiz, katı gövde animatörü): assets.json kaydıyla sahte model → API, temas zamanları, ölçek, ağız/göğüs
+{
+  const A = JSON.parse(fs.readFileSync(new URL('../src/ui/assets.json', import.meta.url)));
+  const def = A.models.find((x) => x.id === 'ejder_ates'); if (!def || !def.rigid) bad('assets.json: ejder_ates rigid kaydı yok');
+  // 1) yükleme başarısız → kod modeline düş
+  _clearGlbs(); registerGlb('ejder_ates', undefined, { 0: 'yok_lo.glb', 1: 'yok_hi.glb' }, def);
+  _setLoaderFactory(() => ({ loadAsync: () => Promise.reject(new Error('404 sahte')) }));
+  await loadGlb('ejder_ates'); if (getModel('ejder_ates', 3).meta.source !== 'code') bad('ejder_ates GLB hatasında yedeğe düşülmedi');
+  // 2) başarılı (sahte geometri: boyu fit.height, ağız +Z'de) → katı gövde modeli
+  _clearGlbs(); registerGlb('ejder_ates', undefined, { 0: 'lo.glb', 1: 'hi.glb' }, def);
+  const H0 = def.fit.height;
+  _setLoaderFactory(() => ({ loadAsync: async () => { const s = new THREE.Group(); const g = new THREE.BoxGeometry(0.9, H0, 0.98); g.translate(0, H0 / 2, 0); s.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial())); return { scene: s, animations: [] }; } }));
+  await loadGlb('ejder_ates');
+  const RAPI = [...API, 'absorb', 'eat', 'rest', 'gather'];
+  for (const st of [1, 2, 3]) {
+    const m = getModel('ejder_ates', st);
+    if (m.meta.source !== 'glb' || !m.meta.rigid) { bad('ejder_ates GLB kullanılmadı', st); continue; }
+    for (const k of RAPI) if (typeof m.anim[k] !== 'function') bad('katı animatörde eksik', k);
+    for (const k of ['mouthWorld', 'chestWorld', 'glow']) if (typeof m.meta[k] !== 'function') bad('GLB meta eksik', k);
+    if (m.meta.finisherFx !== 'fire' || m.meta.dragonType !== 'ates') bad('GLB meta tür/efekt yanlış', m.meta.finisherFx, m.meta.dragonType);
+    if (!(m.meta.mouth.z > m.meta.chest.z && m.meta.mouth.y > m.meta.chest.y)) bad('ağız göğsün önünde/üstünde değil', st);
+    // ölçek: boy = targetHeight × evre oranı; ayaklar zeminde
+    m.group.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(m.root); const want = def.targetHeight * def.stageScale[st - 1];
+    if (Math.abs(bb.max.y - want) > want * 0.03 || Math.abs(bb.min.y) > 0.02) bad('GLB ölçek/zemin hatası', st, bb.min.y.toFixed(3), bb.max.y.toFixed(3), want.toFixed(3));
+    for (const [n, [lo, hi]] of Object.entries(WANT)) { const r = await run(m, n); if (r.tImpact === null || Math.abs(r.tImpact - lo) > 0.04 || r.t > hi + 0.1 || r.nan) bad('katı animatör temas zamanı', st, n, r.tImpact, r.t); }
+    const pr = m.anim.absorb(new THREE.Vector3(2, 1, 2), 1); const ab = await runFor(m, () => pr, 3); if (!ab.done) bad('GLB absorb çözülmedi', st);
+    for (const n of ['hit', 'block', 'dodge', 'victory', 'eat', 'gather']) { const r = await runFor(m, () => m.anim[n](n === 'hit' ? true : undefined), 4); if (!r.done) bad('katı animatör bitmedi', n); }
+    m.anim.rest(true); for (let i = 0; i < 90; i++) { updateTweens(1 / 60); m.anim.update(1 / 60); } const yRest = m.root.position.y; m.anim.rest(false); for (let i = 0; i < 120; i++) { updateTweens(1 / 60); m.anim.update(1 / 60); } if (!(yRest < -0.05 && Math.abs(m.root.position.y) < 0.03)) bad('dinlenme çökmedi/kalkmadı', yRest, m.root.position.y);
+    await runFor(m, () => m.anim.die(), 3); m.group.updateMatrixWorld(true); const ang = m.root.children[0].rotation.z; if (Math.abs(ang) < 1) bad('ölüm pozu yok', ang);
+    m.anim.reset(); let nan = false; m.root.traverse((o) => { if (!Number.isFinite(o.position.x + o.rotation.z + o.scale.y)) nan = true; }); if (nan) bad('NaN');
+  }
+  _clearGlbs();
+}
+
+console.log(fail ?  `HATA: ${fail}` : 'ui testi geçti'); process.exit(fail ? 1 : 0);

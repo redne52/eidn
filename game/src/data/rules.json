@@ -1197,7 +1197,13 @@
   "maxDrawCalls": 80,
   "maxTexture": 512,
   "maxPixelRatio": 1.5,
-  "maxBuildMB": 15
+  "maxBuildMB": 15,
+  "heroGlbTris": {
+   "0": 3000,
+   "1": 8000,
+   "2": 8000
+  },
+  "_heroGlb": "GLB oyuncu modeli (iskeletsiz, tek mesh) icin gorsel butce; grafik ayarina gore LOD secilir. Oyun mantigini etkilemez."
  },
  "directorDecisions": {
   "date": "2026-11-18",
