@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skinTex } from './models/skin.js';
+import { upgradeSurface, SURF_DEFAULTS } from './models/surface.js';
 import { instantiateGlb } from './glb.js';
 
 // ---------- küçük tween motoru (tüm animasyonlar buradan) ----------
@@ -35,19 +36,31 @@ export function mat(color, opts = {}) {
 
 // ---------- model malzemeleri: gövde (ayrıntı dokulu) / metal / parıltı ----------
 const METAL = new Set([PAL.gold, PAL.goldD, 0xe7c35a, 0xc9a13b, 0xb8862a]);
-const SKIN = new Set([0xb27a4e, 0xb98058, 0xc58b5a, 0xb57a4b, 0x8a6040, 0x8e7058, 0x8a6448, 0xc79a5b, 0x9a7a52, 0xb08850]);
+const SKIN = new Set([0x7f8c92, 0x9a5a3a, 0xb27a4e, 0xb98058, 0xc58b5a, 0xb57a4b, 0x8a6040, 0x8e7058, 0x8a6448, 0xc79a5b, 0x9a7a52, 0xb08850]);
 const GLOW = new Set([0xffe066, 0xffffff, 0xfff07a, 0xff3b3b, 0xff9a3d, 0xffe14a, 0x6ed6ff, 0x7dffb0, 0xff5a2a, 0x9fe8ff, 0x3fc4ff]);
 const kmCache = new Map();
+const DRAGON_DETAIL = new Set(['dscale', 'scale', 'plate']);
 function kindMat(kind, detail) {
   const key = kind + '|' + detail;
   if (kmCache.has(key)) return kmCache.get(key);
   let m;
-  if (kind === 'glow') m = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-  else if (kind === 'skin') m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0, ...(detail === 'fur' ? skinTex('hide') : {}), normalScale: new THREE.Vector2(0.35, 0.35) });
-  else if (kind === 'metal') m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.45, emissive: 0x2a1a00, emissiveIntensity: 0.35 });
-  else { const t = skinTex(detail); m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0, ...t, normalScale: new THREE.Vector2(0.6, 0.6) }); }
+  if (kind === 'glow') { m = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); m.color.setScalar(GLOW_BASE); }
+  else if (kind === 'skin') { // karın plakaları / insan teni / dişler
+    const cfg = DRAGON_DETAIL.has(detail) ? { ...SURF_DEFAULTS.chitin, freq: 6, rough: 0.55, rim: 0.2, dark: 0.72, bump: 0.6 } : { ...SURF_DEFAULTS.hide, freq: 5, bump: 0.35, rough: 0.6, rim: 0.22, dark: 0.82 };
+    m = upgradeSurface(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: cfg.rough, metalness: 0 }), cfg);
+  } else if (kind === 'metal') { // boynuz / pençe / diş / bronz-altın zırh: sert yüzey
+    const cfg = SURF_DEFAULTS.horn;
+    m = upgradeSurface(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: cfg.rough, metalness: 0.4, emissive: 0x1a1000, emissiveIntensity: 0.25 }), cfg);
+  } else if (kind === 'mem') { // kanat zarı: çift yüzlü, damarlı, arkadan ışık hissi
+    const cfg = SURF_DEFAULTS.mem;
+    m = upgradeSurface(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: cfg.rough, metalness: 0, side: THREE.DoubleSide }), cfg);
+  } else {
+    const cfg = SURF_DEFAULTS[detail] || SURF_DEFAULTS.hide;
+    m = upgradeSurface(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: cfg.rough, metalness: detail === 'chitin' ? 0.15 : 0 }), cfg);
+  }
   kmCache.set(key, m); return m;
 }
+const GLOW_BASE = 1.6; // parıltı rengi >1 → son işlemde bloom'a girer
 
 // ---------- geometri yardımcıları ----------
 const V2 = (x, y) => new THREE.Vector2(x, y);
@@ -108,7 +121,7 @@ function finalize(group, root, detail) {
   }
   const skeleton = new THREE.Skeleton(bones);
   const out = [];
-  for (const kind of ['body', 'skin', 'metal', 'glow']) {
+  for (const kind of ['body', 'skin', 'mem', 'metal', 'glow']) {
     const list = buckets.get(kind); if (!list) continue;
     const geo = mergeGeometries(list, false); list.forEach((g) => g.dispose());
     const sm = new THREE.SkinnedMesh(geo, kindMat(kind, detail));
@@ -204,7 +217,7 @@ B.ugallu = (o, st, pal) => {
 
 // ---------- GİRTABLULLU: akrep-insan ----------
 B.girtablullu = (o, st, pal) => {
-  const C = pal || { body: 0x4a2c1a, shell: 0x6b3d1f, shellD: 0x3a2214, acc: PAL.gold, sting: 0x7dffb0, skin: 0xb27a4e, beard: 0x1d1a20 };
+  const C = pal || { body: 0x4a2c1a, shell: 0x6b3d1f, shellD: 0x3a2214, acc: PAL.gold, sting: 0x7dffb0, skin: 0x8a6040, beard: 0x1d1a20 };
   const root = o.root;
   const abd = pivot(root, [0, 0.42, -0.12]);
   P(abd, G.sph(0.3, 9, 6), C.shell, [0, 0, 0.12], [0, 0, 0], [1.1, 0.55, 1.25]);
@@ -263,7 +276,7 @@ B.girtablullu = (o, st, pal) => {
 
 // ---------- KULULLU: balık-insan ----------
 B.kulullu = (o, st, pal) => {
-  const C = pal || { body: 0x2a8c8a, dark: 0x16585a, acc: PAL.gold, fin: 0x63c7d6, skin: 0xb98058, beard: 0x1b2030, orb: 0x3fc4ff };
+  const C = pal || { body: 0x2a8c8a, dark: 0x16585a, acc: PAL.gold, fin: 0x63c7d6, skin: 0x7f8c92, beard: 0x1b2030, orb: 0x3fc4ff };
   const root = o.root;
   // balık alt gövde: kalça + 3 kemikli kuyruk + yüzgeç
   const lower = pivot(root, [0, 0.62, 0]);
@@ -306,7 +319,7 @@ B.kulullu = (o, st, pal) => {
 
 // ---------- KUSARIKKU: boğa-insan, eşik bekçisi ----------
 B.kusarikku = (o, st, pal) => {
-  const C = pal || { body: 0x7a4a2c, dark: 0x3e2618, horn: 0xe6d6b0, acc: PAL.gold, skin: 0xb98058, beard: 0x1a2a4a, hoof: 0x231812 };
+  const C = pal || { body: 0x7a4a2c, dark: 0x3e2618, horn: 0xe6d6b0, acc: PAL.gold, skin: 0x9a5a3a, beard: 0x1a2a4a, hoof: 0x231812 };
   const root = o.root;
   // boğa bacakları: kalın uyluk, geriye kırık diz, toynak
   const legs = [];
@@ -465,9 +478,14 @@ B.dragon = (o, st, C) => {
   const hs = [1.32, 1.12, 1][st - 1]; // yavruda kafa büyük
   // ---- gövde: göğüs + kalça + karın ----
   const torso = pivot(root, [0, 0.66, 0]);
-  P(torso, G.sph(0.38, 10, 7), C.body, [0, 0.05, 0.3], [0, 0, 0], [0.92, 0.88, 1.25]);
-  P(torso, G.sph(0.34, 9, 6), C.body, [0, 0.02, -0.36], [0, 0, 0], [0.9, 0.84, 1.3]);
-  P(torso, G.sph(0.3, 9, 5), C.belly, [0, -0.13, -0.02], [0, 0, 0], [0.88, 0.58, 2.3], 'skin');
+  // v5: tek parça Lathe gövde — göğüs kafesi yüksek ve dolgun, bel incelir, kalça kaslı; kuyruğa ve boyna yumuşak geçiş
+  const PROF = [[0.02, -0.86], [0.15, -0.8], [0.27, -0.6], [0.33, -0.38], [0.3, -0.12], [0.34, 0.12], [0.38, 0.34], [0.35, 0.54], [0.27, 0.7], [0.15, 0.8], [0.02, 0.84]];
+  const rAt = (z) => { for (let i = 1; i < PROF.length; i++) if (z <= PROF[i][1]) { const [r0, z0] = PROF[i - 1], [r1, z1] = PROF[i]; return r0 + (r1 - r0) * (z - z0) / (z1 - z0); } return 0.02; };
+  P(torso, G.lathe(PROF, 9), C.body, [0, 0.03, -0.02], [Math.PI / 2, 0, 0], [0.92, 1, 0.86]);
+  // karın plakaları: alt yüzey boyunca, gövde profilini izleyen ayrı tonlu plakalar
+  for (let i = 0; i < 7; i++) { const z = 0.6 - i * 0.19, r = rAt(z); P(torso, G.box(r * 1.2, 0.035, 0.12), C.belly, [0, 0.03 - r * 0.84, z - 0.02], [0.06 + (z > 0.3 ? -0.25 : z < -0.4 ? 0.2 : 0), 0, 0], null, 'skin'); }
+  // omuz/kaburga kası (gövde yanları)
+  for (const sx of [-1, 1]) P(torso, G.sph(0.17, 7, 5), C.body, [sx * 0.2, 0.08, 0.36], [0, 0, 0], [0.7, 1.05, 1.25]);
   const chest = pivot(torso, [0, 0.0, 0.6]);
   if (T === 'ates') for (let i = 0; i < 3; i++) P(chest, G.box(0.04 + i * 0.01, 0.2 - i * 0.04, 0.02), C.glow, [(i - 1) * 0.09, -0.06 - Math.abs(i - 1) * 0.04, -0.04], [0, 0, (i - 1) * 0.5], null, 'glow');
   // ---- bacaklar: ön dirsek geride, arka diz önde; ayak 3 öne + 1 arkaya pençe ----
@@ -480,16 +498,18 @@ B.dragon = (o, st, C) => {
     seg(L, kn, [s * 0.07, -0.56, front ? 0.05 : -0.03], 0.075, C.dark);
     P(L, G.sph(0.09, 6, 4), C.dark, [s * 0.07, -0.6, 0.07], [0, 0, 0], [1, 0.48, 1.4]);
     for (const a of [-0.45, 0, 0.45]) spike(L, [s * 0.07 + Math.sin(a) * 0.06, -0.62, 0.15], [Math.sin(a) * 0.5, -0.35, 1], 0.024, 0.12, C.horn, 'metal', 4);
-    spike(L, [s * 0.07, -0.61, -0.04], [0, -0.3, -1], 0.018, 0.08, C.horn, 'metal', 4);
   }
   // ---- boyun: 3 kemik, öne-yukarı S kıvrımı; boğaz parıltısı ----
   const neck = []; let np = torso;
-  const nr = [[0, 0.16, 0.66, 1.05], [0, 0.27, 0, -0.32], [0, 0.27, 0, -0.36]];
+  // v5: daha uzun, kademeli incelen boyun; ön yüzde boğaz plakaları, arkada küçük diken dizisi
+  const nr = [[0, 0.16, 0.7, 1.05], [0, 0.31, 0, -0.3], [0, 0.31, 0, -0.38]];
   nr.forEach(([x, y, z, rx], i) => {
     const n = pivot(np, i ? [0, y, 0] : [x, y, z], [rx, 0, 0]); neck.push(n);
-    seg(n, [0, -0.02, 0], [0, 0.29, 0], 0.13 - i * 0.022, C.body);
-    P(n, G.sph(0.07 - i * 0.008, 6, 4), C.belly, [0, 0.13, 0.08 - i * 0.008], [0, 0, 0], [1.2, 1.8, 0.55], 'skin');
-    P(n, G.box(0.05, 0.18, 0.02), C.glow, [0, 0.13, 0.1 - i * 0.012], [0, 0, 0], null, 'glow'); // boğaz
+    const r0 = 0.15 - i * 0.03;
+    seg(n, [0, -0.03, 0], [0, 0.33, 0], r0, C.body);
+    for (let k = 0; k < 2; k++) P(n, G.box(r0 * 1.25, 0.1, 0.03), C.belly, [0, 0.07 + k * 0.14, r0 * 0.86], [0.1, 0, 0], null, 'skin'); // boğaz plakaları
+    P(n, G.box(0.04, 0.2, 0.02), C.glow, [0, 0.15, r0 * 0.95 + 0.012], [0, 0, 0], null, 'glow'); // boğaz parıltısı
+    if (st >= 2 && T !== 'su' && i < 2) spike(n, [0, 0.16, -r0 * 0.85], [0, 0.45, -1], 0.022, 0.07 + st * 0.02, T === 'tas' ? C.horn : C.spk, T === 'tas' ? 'metal' : 'body', 4);
     np = n;
   });
   // ---- kafa (+z ileri), çene ayrı kemik ----
@@ -507,6 +527,7 @@ B.dragon = (o, st, C) => {
   P(jaw, G.sph(0.095 * hs, 8, 5), C.body, hp(0, -0.03, 0.18), [0, 0, 0], [0.8, 0.34, 1.75]);
   for (const s of [-1, 1]) spike(jaw, hp(s * 0.05, -0.01, 0.28), [0, 1, 0.1], 0.011 * hs, 0.05 * hs, 0xf2ead8, 'skin', 4);
   const mouth = pivot(head, hp(0, -0.06, 0.4)); // ağız ucu işaretçisi (kemik, parça yok)
+  if (st >= 2) for (const s of [-1, 1]) { spike(head, hp(s * 0.13, -0.02, -0.04), [s * 0.8, -0.1, -0.6], 0.025 * hs, 0.11 * hs, C.horn, 'metal', 4); spike(jaw, hp(s * 0.07, -0.05, 0.02), [s * 0.5, -0.4, -0.7], 0.018 * hs, 0.08 * hs, C.horn, 'metal', 4); } // yanak/çene dikenleri
   // boynuzlar evreye göre
   if (st === 1) for (const s of [-1, 1]) spike(head, hp(s * 0.08, 0.12, -0.04), [s * 0.2, 1, -0.7], 0.03 * hs, 0.08 * hs, C.horn, 'metal', 5);
   else {
@@ -521,7 +542,7 @@ B.dragon = (o, st, C) => {
   // tür imzası (evre 3): ateş yelesi / su yüzgeç tacı / zehir dikenleri + kesecikler / taş alın plakası
   if (st === 3) {
     if (T === 'ates') neck.forEach((n, i) => { for (let k = 0; k < 2; k++) { spike(n, [0, 0.06 + k * 0.13, -0.09], [0, 0.35, -1], 0.035, 0.2, C.dark, 'body', 4); spike(n, [0, 0.06 + k * 0.13, -0.27], [0, 0.4, -1], 0.022, 0.1, C.glow, 'glow', 4); } });
-    if (T === 'su') { for (let k = -2; k <= 2; k++) { const f = pivot(head, hp(k * 0.05, 0.12, -0.04), [-0.8 + Math.abs(k) * 0.12, 0, k * 0.28]); P(f, G.box(0.018, 0.3 - Math.abs(k) * 0.05, 0.1), C.mem, [0, 0.14 - Math.abs(k) * 0.02, 0], [0, 0, 0], null, 'skin'); spike(f, [0, 0.28 - Math.abs(k) * 0.05, 0], [0, 1, 0], 0.012, 0.06, C.glow, 'glow', 4); } for (const s of [-1, 1]) P(head, G.box(0.015, 0.12, 0.16), C.mem, hp(s * 0.15, 0.0, -0.02), [0, s * 0.5, 0], null, 'skin'); }
+    if (T === 'su') { for (let k = -2; k <= 2; k++) { const f = pivot(head, hp(k * 0.05, 0.12, -0.04), [-0.8 + Math.abs(k) * 0.12, 0, k * 0.28]); P(f, G.box(0.018, 0.3 - Math.abs(k) * 0.05, 0.1), C.mem, [0, 0.14 - Math.abs(k) * 0.02, 0], [0, 0, 0], null, 'mem'); spike(f, [0, 0.28 - Math.abs(k) * 0.05, 0], [0, 1, 0], 0.012, 0.06, C.glow, 'glow', 4); } for (const s of [-1, 1]) P(head, G.box(0.015, 0.12, 0.16), C.mem, hp(s * 0.15, 0.0, -0.02), [0, s * 0.5, 0], null, 'skin'); }
     if (T === 'zehir') { for (let k = 0; k < 5; k++) spike(head, hp((k - 2) * 0.05, 0.13, -0.06 - Math.abs(k - 2) * 0.02), [(k - 2) * 0.2, 1, -0.6], 0.02, 0.14, C.spk, 'body', 4); for (const s of [-1, 1]) { P(neck[0], G.sph(0.07, 7, 5), C.glow, [s * 0.11, 0.12, 0.04], [0, 0, 0], [0.8, 1.2, 0.8], 'glow'); spike(jaw, hp(s * 0.06, -0.06, 0.12), [s * 0.3, -1, 0], 0.015, 0.08, C.spk, 'body', 4); } }
     if (T === 'tas') for (const s of [-1, 1]) P(head, G.box(0.07, 0.04, 0.16), C.horn, hp(s * 0.07, 0.11, 0.12), [0.25, s * 0.2, 0], null, 'metal'); // kaş plakaları
   }
@@ -531,7 +552,7 @@ B.dragon = (o, st, C) => {
     for (let i = 0; i < n; i++) {
       const z = 0.58 - i * (1.2 / (n - 1));
       if (T === 'tas') P(torso, G.box(0.22, 0.05, 0.16), C.horn, [0, 0.34 + Math.cos(z * 1.6) * 0.04, z], [0.1, 0, 0], null, st === 3 ? 'metal' : 'body');
-      else if (T === 'su') P(torso, G.cone(0.11, 0.14 + st * 0.05, 3), C.mem, [0, 0.36 + (0.07 + st * 0.025), z], [-0.45, 0, 0], [0.18, 1, 1], 'skin');
+      else if (T === 'su') P(torso, G.cone(0.11, 0.14 + st * 0.05, 3), C.mem, [0, 0.36 + (0.07 + st * 0.025), z], [-0.45, 0, 0], [0.18, 1, 1], 'mem');
       else spike(torso, [0, 0.33 + Math.cos(z * 1.6) * 0.04, z], [0, 1, -0.35], 0.04 * big, (0.1 + st * 0.04) * big, C.spk, 'body', 4);
     }
   }
@@ -545,7 +566,7 @@ B.dragon = (o, st, C) => {
     tp = p;
   }
   if (T === 'ates') { spike(tp, [0, 0, -0.17], [0, 0.3, -1], 0.06, 0.2, C.dark, 'body', 4); if (st >= 2) spike(tp, [0, 0.02, -0.3], [0, 0.4, -1], 0.04 + st * 0.01, 0.14 + st * 0.04, C.glow, 'glow', 5); }
-  if (T === 'su') for (const s of [-1, 1]) P(tp, G.cone(0.1 + st * 0.03, 0.3, 3), C.mem, [s * 0.07, 0, -0.22], [-Math.PI / 2 + 0.2, 0, s * 0.9], [1, 1, 0.18], 'skin'); // kuyruk yüzgeci
+  if (T === 'su') for (const s of [-1, 1]) P(tp, G.cone(0.1 + st * 0.03, 0.3, 3), C.mem, [s * 0.07, 0, -0.22], [-Math.PI / 2 + 0.2, 0, s * 0.9], [1, 1, 0.18], 'mem'); // kuyruk yüzgeci
   if (T === 'zehir') { P(tp, G.sph(0.07, 7, 5), C.dark, [0, 0, -0.2], [0, 0, 0], [1, 1, 1.4]); spike(tp, [0, 0.02, -0.27], [0, 0.6, -1], 0.035, 0.12 + st * 0.06, C.glow, 'glow', 5); }
   if (T === 'tas') { P(tp, G.ico(0.09 + st * 0.03, 0), C.dark, [0, 0, -0.24]); if (st >= 2) for (const d of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]]) spike(tp, [d[0] * 0.1, d[1] * 0.1, -0.24], d, 0.03, 0.1, C.horn, 'metal', 4); }
   // ---- kanatlar: dinlenmede katlı, gövde boyunca geriye yatık ----
@@ -557,7 +578,7 @@ B.dragon = (o, st, C) => {
     spike(W, tip, [s * 0.4, 0.6, 0.1], 0.025, 0.08 + st * 0.03, C.horn, 'metal', 4); // başparmak pençesi
     const fings = st === 1 ? [[s * wl * 0.9, -0.12, -0.3 * wl]] : [[s * wl * 1.02, -0.14, -0.38 * wl], [s * wl * 0.78, -0.22, -0.66 * wl], [s * wl * 0.42, -0.16, -0.78 * wl]];
     fings.forEach((f) => seg(W, tip, f, 0.018, C.dark));
-    P(W, membraneGeo(s, [[0, 0, 0], el, tip, ...fings, [0, -0.12, -0.5 * wl]]), C.mem, [0, 0, 0], [0, 0, 0], null, 'skin');
+    P(W, membraneGeo(s, [[0, 0, 0], el, tip, ...fings, [0, -0.12, -0.5 * wl]]), C.mem, [0, 0, 0], [0, 0, 0], null, 'mem');
     return W;
   };
   const wingL = wing(-1), wingR = wing(1);
@@ -624,10 +645,10 @@ function dragonMeta(model, C) {
   model.meta.chestWorld = (out = new THREE.Vector3()) => parts.chest.getWorldPosition(out);
   // modele özel malzeme kopyaları: parıltı diğer modelleri etkilemesin
   const body = model.meshes.find((x) => x.userData.kind === 'body'), glow = model.meshes.find((x) => x.userData.kind === 'glow');
-  if (body) { body.material = body.material.clone(); body.material.emissive = new THREE.Color(C.glow); body.material.emissiveIntensity = 0; }
+  if (body) { const src = body.material; body.material = upgradeSurface(src.clone(), src.userData.edinSurf); body.material.emissive = new THREE.Color(C.glow); body.material.emissiveIntensity = 0; }
   if (glow) glow.material = glow.material.clone();
   let gk = 0;
-  model.meta.glow = (k) => { gk = Math.max(0, Math.min(1, k || 0)); if (body) body.material.emissiveIntensity = gk * 0.3; if (glow) glow.material.color.setScalar(1 + gk * 1.8); };
+  model.meta.glow = (k) => { gk = Math.max(0, Math.min(1, k || 0)); if (body) body.material.emissiveIntensity = gk * 0.3; if (glow) glow.material.color.setScalar(GLOW_BASE + gk * 2.6); };
   Object.defineProperty(model.meta, 'glowLevel', { get: () => gk });
 }
 
@@ -650,7 +671,7 @@ function makeEgg(grade = 'C') {
   P(root, G.cyl(0.55, 0.7, 0.3, 10), PAL.lapis, [0, 0.0, 0]); P(root, G.cyl(0.58, 0.58, 0.06, 10), PAL.gold, [0, 0.16, 0]);
   const meshes = finalize(group, root, 'scale');
   const body = meshes.find((m) => m.userData.kind === 'body');
-  if (body && grade !== 'C') { body.material = body.material.clone(); body.material.emissive = new THREE.Color(glow); body.material.emissiveIntensity = grade === 'S' ? 0.55 : 0.3; }
+  if (body && grade !== 'C') { body.material = upgradeSurface(body.material.clone(), body.material.userData.edinSurf); body.material.emissive = new THREE.Color(glow); body.material.emissiveIntensity = grade === 'S' ? 0.55 : 0.3; }
   const meta = { source: 'code', kind: 'egg', finisherFx: 'spirit', impactPoint: new THREE.Vector3(0, 0.6, 0.4), height: 1.4 };
   const model = { id: 'egg', group, root, parts: { shell: shellP }, meshes, height: 1.4, meta };
   model.anim = makeAnimator(model); return model;
@@ -689,7 +710,7 @@ function makeAnimator(m) {
   const flash = (color, power = 0.9) => {
     const list = (m.meshes || []).filter((x) => x.material && x.material.emissive);
     if (!list.length || flashing) return Promise.resolve();
-    const saved = list.map((x) => x.material); list.forEach((x) => { x.material = x.material.clone(); x.material.emissive = new THREE.Color(color); x.material.emissiveIntensity = power; });
+    const saved = list.map((x) => x.material); list.forEach((x) => { const src = x.material; x.material = src.userData.edinSurf ? upgradeSurface(src.clone(), src.userData.edinSurf) : src.clone(); x.material.emissive = new THREE.Color(color); x.material.emissiveIntensity = power; });
     flashing = tween(0.24, (k) => list.forEach((x) => (x.material.emissiveIntensity = power * (1 - k)))).then(() => { list.forEach((x, i) => { x.material.dispose(); x.material = saved[i]; }); flashing = null; });
     return flashing;
   };

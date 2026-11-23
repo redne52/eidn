@@ -22,6 +22,13 @@ const FRAG = `
 uniform sampler2D uTex; varying vec3 vC; varying float vA;
 void main(){ vec4 t = texture2D(uTex, gl_PointCoord); float a = t.a * vA; if (a < 0.01) discard; gl_FragColor = vec4(vC * (0.6 + t.rgb * 0.8), a); }`;
 
+// v5: kıvrımlı enerji şeritleri (TubeGeometry boyunca akan desen) — eklemeli, renk geçişli, son işlemde parlar
+const RVERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const RFRAG = `uniform float uFlow; uniform float uA; uniform vec3 uC1; uniform vec3 uC2; varying vec2 vUv;
+void main(){ float x = vUv.x; float s = fract(x * 3.0 - uFlow); float band = pow(1.0 - s, 2.5) * 0.85 + 0.15;
+  float edge = 1.0 - abs(vUv.y * 2.0 - 1.0); float a = band * smoothstep(0.0, 0.12, x) * smoothstep(1.0, 0.85, x) * edge * uA;
+  if (a < 0.01) discard; gl_FragColor = vec4(mix(uC1, uC2, x) * (1.4 + band), a); }`;
+
 /**
  * @param scene THREE.Scene
  * @param o.from  ölen canavar modeli (getModel çıktısı)
@@ -85,6 +92,11 @@ export function createSoulAbsorb(scene, { from, to, camera, renderer, dur = 1, k
   const light = !reduced && quality > 0 ? new THREE.PointLight(0x5ff0ff, 0, 6) : null;
   if (light) { light.position.copy(chestFrom); scene.add(light); }
 
+  // v5: şeritler, ağız önünde emme halkası ve ağız parıltısı
+  const ribbons = []; const nRib = reduced ? 0 : quality === 0 ? 1 : kind === 'guardian' ? 4 : 3;
+  const ringMat = new THREE.MeshBasicMaterial({ color: tint ? tint.clone().lerp(new THREE.Color(0x8ff8ff), 0.5) : new THREE.Color(0x8ff8ff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.018, 4, 24), ringMat); ring.visible = false; scene.add(ring);
+  const mglow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0x9ffcff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); mglow.scale.setScalar(0.6); scene.add(mglow);
   let t = 0, absorbStarted = false, labelShown = false, finished = false, resolve;
   const api = {
     speed: 1,
@@ -105,6 +117,14 @@ export function createSoulAbsorb(scene, { from, to, camera, renderer, dur = 1, k
           const c1 = a.clone().lerp(m, 0.33).addScaledVector(perp, (Math.random() - 0.5) * 1.6 * Math.min(1.5, len * 0.4)).add(new THREE.Vector3(0, 0.1 + Math.random() * 0.4, 0));
           const c2 = a.clone().lerp(m, 0.72).addScaledVector(perp, (Math.random() - 0.5) * 0.8).add(new THREE.Vector3(0, Math.random() * 0.2, 0));
           q.curve = new THREE.CatmullRomCurve3([a, c1, c2, m.clone()], false, 'catmullrom', 0.5);
+        }
+        const withCurve = P.filter((q) => q.curve);
+        for (let r = 0; r < nRib && r < withCurve.length; r++) {
+          const cv = withCurve[Math.floor((r / nRib) * withCurve.length)].curve;
+          const g = new THREE.TubeGeometry(cv, 40, 0.03 + (r === 0 ? 0.02 : 0), 5, false);
+          const mm = new THREE.ShaderMaterial({ vertexShader: RVERT, fragmentShader: RFRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+            uniforms: { uFlow: { value: Math.random() }, uA: { value: 0 }, uC1: { value: new THREE.Color(0x3a8cff) }, uC2: { value: tint ? tint.clone() : new THREE.Color(0xc8ffff) } } });
+          const rm = new THREE.Mesh(g, mm); rm.frustumCulled = false; rm.renderOrder = 6; scene.add(rm); ribbons.push(rm);
         }
       }
       const kB = smooth(t / 0.3);                 // yükseliş
@@ -138,6 +158,12 @@ export function createSoulAbsorb(scene, { from, to, camera, renderer, dur = 1, k
         pos[i * 3] = q.p.x; pos[i * 3 + 1] = q.p.y; pos[i * 3 + 2] = q.p.z; size[i] = s; alpha[i] = a;
       }
       geo.attributes.position.needsUpdate = true; geo.attributes.psize.needsUpdate = true; geo.attributes.palpha.needsUpdate = true;
+      // v5: şeritler akar, halka ağzın önünde içe doğru daralır, ağız parlar
+      const flowA = Math.sin(Math.PI * clamp01((t - 0.25) / 0.65));
+      for (const rm of ribbons) { rm.material.uniforms.uFlow.value += dt * api.speed * 2.4; rm.material.uniforms.uA.value = flowA * 0.9; }
+      ring.visible = kC > 0 && kD < 1; ring.position.copy(m); ring.lookAt(rise);
+      const rp = (t * 3.2) % 1; ring.scale.setScalar(1.6 - rp * 1.2); ringMat.opacity = flowA * (1 - rp) * 0.8;
+      mglow.position.copy(m); mglow.material.opacity = Math.max(flowA * 0.8, (1 - kD) * kD * 2.2); mglow.scale.setScalar(0.45 + flowA * 0.5);
       // ışık parçacıkların ağırlık merkezini izler
       if (light) { light.position.lerpVectors(chestFrom, m, smooth(kC)); light.intensity = (kind === 'guardian' ? 6 : 3.5) * Math.sin(Math.PI * clamp01(t)) ; }
       // D: göz/boğaz/pul parıltısı
@@ -156,6 +182,7 @@ export function createSoulAbsorb(scene, { from, to, camera, renderer, dur = 1, k
       if (to.meta && to.meta.glow) to.meta.glow(0);
       from.group.visible = false;
       scene.remove(points); geo.dispose(); matl.dispose();
+      for (const rm of ribbons) { scene.remove(rm); rm.geometry.dispose(); rm.material.dispose(); } scene.remove(ring); ring.geometry.dispose(); ringMat.dispose(); scene.remove(mglow); mglow.material.dispose();
       if (light) scene.remove(light);
       dis.dispose();
       resolve();

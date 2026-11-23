@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import R from '../data/rules.json';
 import { getModel, makeProp, tween, ease, mat } from './models.js';
-import { toScreen, shake, stage } from './stage.js';
+import { toScreen, shake, stage, hitStop, flagShadows } from './stage.js';
 import { buildBattleEnv, ZONE_ENV } from './env/zones.js';
 import { ritualTex } from './env/textures.js';
 import { blobShadow } from './env/fx.js';
@@ -25,8 +25,10 @@ export function createBattleView(battle, { zoneId = 'kiyi', ui, onSound = () => 
   const pm = getModel(P.id, stageOf(P.level)); pm.group.position.set(-2, 0, 0); pm.group.rotation.y = Math.PI / 2; scene.add(pm.group);
   const em = getModel(E.id, E.kind === 'guardian' ? 3 : stageOf(E.level)); em.group.position.set(2.1, 0, 0); em.group.rotation.y = -Math.PI / 2; scene.add(em.group);
   const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.3, 320);
-  const camHome = new THREE.Vector3(0.2, 2.1, 7.2); const lookAt = new THREE.Vector3(0, 0.55, 0);
-  const tallest = Math.max(pm.height, em.height); if (tallest > 2.6) { camHome.set(0.4, 2.8, 9.4); lookAt.y = 1.0; }
+  if (stage.quality > 0) { flagShadows(scene, { cast: stage.quality >= 2 }); flagShadows(pm.group); flagShadows(em.group); shadows.forEach((sh) => { sh.material = sh.material.clone(); sh.material.opacity *= 0.55; }); }
+  // v5: alçak, çapraz sinematik açı — oyuncunun arkasından/yanından, iki dövüşçü kadrajda
+  const camHome = new THREE.Vector3(-1.5, 1.6, 6.7); const lookAt = new THREE.Vector3(0.35, 0.85, 0);
+  const tallest = Math.max(pm.height, em.height); if (tallest > 2.6) { camHome.set(-1.9, 2.3, 8.9); lookAt.y = 1.15; }
   camera.position.copy(camHome); camera.lookAt(lookAt);
   const fxg = new THREE.Group(); scene.add(fxg);
   const fx = createBattleFx(scene, { quality: stage.quality });
@@ -234,7 +236,8 @@ export function createBattleView(battle, { zoneId = 'kiyi', ui, onSound = () => 
         await strikeAnim(A, ev.move === 'counter' ? 'quick' : ev.move, () => {
           const at = contactOf(D, A);
           if (fin) { fx.finisher(fin.kind, A.m.group.position.clone().setY(0.9), at, fin.points, A.m.meta && A.m.meta.mouthWorld ? A.m.meta.mouthWorld() : null); screenFlash(fin.kind === 'poison' ? '#9cff7a' : fin.kind === 'water' ? '#9feeff' : fin.kind === 'horn' ? '#ffe08a' : fin.kind === 'fire' ? '#ffb060' : '#cfe8ff', 0.18 + fin.points * 0.04); shake(0.2 + fin.points * 0.06); }
-          else if (ev.move === 'heavy') { fx.heavy(at, dirX); punch(dirX); }
+          else if (ev.move === 'heavy') { fx.heavy(at, dirX); punch(dirX, 0.45); }
+          if (ev.result !== 'dodge') hitStop(fin ? 80 : ev.result === 'crit' ? 75 : ev.move === 'heavy' ? 65 : 35);
           else fx.quick(at, dirX);
           if (ev.result === 'dodge') { D.m.anim.dodge(); floatText(D.m, 'Kaçtı!', 'dodge'); onSound('whoosh'); return; }
           hpView[dKey] -= ev.dmg; renderBars();
@@ -321,7 +324,8 @@ export function createBattleView(battle, { zoneId = 'kiyi', ui, onSound = () => 
   }
   const flyers = new Set();
   const view = {
-    scene, camera, exposure: ZONE_ENV[zoneId]?.exposure ?? 1.05,
+    scene, camera, exposure: ZONE_ENV[zoneId]?.exposure ?? 1.05, lookId: ZONE_ENV[zoneId] ? zoneId : 'kiyi',
+    shadowFocus: benv.atm && benv.atm.shadow ? (() => { const f = new THREE.Vector3(0, 0, 0); return () => benv.atm.shadow(f); })() : null,
     update(dt) {
       benv.update(dt); pm.anim.update(dt); em.anim.update(dt); fx.update(dt); if (soul) soul.update(dt); for (const f of flyers) f.update(dt);
       fxg.children.forEach((p) => { if (p.userData.v) { p.position.addScaledVector(p.userData.v, dt); p.userData.v.y -= 6 * dt; p.material.opacity = Math.max(0, p.material.opacity - dt * 0.9); } });

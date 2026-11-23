@@ -131,7 +131,7 @@ export function createSpiritFeed(scene, { dragon, items, ghostAt, camera, render
   }
   // ---- göğüs nabzı ----
   const pulseCol = ghosts.reduce((best, g) => (pullRank(g.it) > pullRank(best.it) ? g : best), ghosts[0]).col;
-  const pulse = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: pulseCol, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  const pulse = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(pulseCol).multiplyScalar(1.8), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false }));
   pulse.renderOrder = 7; scene.add(pulse);
   const light = !reduced && quality > 0 ? new THREE.PointLight(pulseCol, 0, 6) : null; if (light) scene.add(light);
 

@@ -74,7 +74,7 @@ export function applyDissolve(root, { color = 0x5ff6ff, scale = 3.2, edgeFirst =
   float dzT = uDisK * 1.08 - 0.04;
   if (dzN < dzT) discard;
   float dzE = 1.0 - smoothstep(0.0, 0.09, dzN - dzT);
-  gl_FragColor.rgb += uDisCol * dzE * 2.2 * step(0.001, uDisK);
+  gl_FragColor.rgb += mix(uDisCol, vec3(1.0, 0.72, 0.38), dzE * dzE * 0.6) * dzE * 2.8 * step(0.001, uDisK);
 }`);
     };
     m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|dissolve' + (edgeFirst ? 'E' : '');

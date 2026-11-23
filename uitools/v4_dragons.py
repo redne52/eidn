@@ -1,7 +1,7 @@
 import asyncio, sys
 from playwright.async_api import async_playwright
-BASE='file:///home/claude/edin/game/dist/index.html'
-S='/home/claude/edin/shots/'
+BASE='file:///home/claude/eidn/game/dist/index.html'
+S='/home/claude/eidn/shots/sonra/'
 async def shot(b, q, path, w=1280, h=560, wait=2500, extra=[]):
     pg = await (await b.new_context(viewport={'width':w,'height':h})).new_page()
     errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -16,7 +16,7 @@ async def main(mode):
         D=['ejder_ates','ejder_su','ejder_zehir','ejder_tas']; errs=[]
         if mode in ('all','gal'): errs+=await shot(b,'?gallery=1&set=dragons',S+'v4_dragons.png',1400,640,3000)
         if mode in ('all','close'):
-            for d in D: errs+=await shot(b,f'?gallery=1&close={d}',S+f'v4_close_{d}.png',1100,520)
+            for d in (D if len(sys.argv)<3 else [sys.argv[2]]): errs+=await shot(b,f'?gallery=1&close={d}',S+f'v4_close_{d}.png',1100,520)
         if mode in ('all','anim'):
             for d in D:
                 errs+=await shot(b,f'?gallery=1&close={d}&anim=finisher&dtcap=1',S+f'v4_fin_{d}_a.png',900,520,1250,[(300,S+f'v4_fin_{d}_b.png'),(300,S+f'v4_fin_{d}_c.png')])

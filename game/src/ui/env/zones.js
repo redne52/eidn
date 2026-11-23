@@ -2,6 +2,7 @@
 // Oyun alanı (0..W, 0..H) neredeyse düz kalır; yükselti, kayalık ve büyük yapılar kenarlarda ve uzak planda.
 import * as THREE from 'three';
 import { texSet, crackEmissive, noise2, rng, glowTex, texCfg } from './textures.js';
+import { attachSunShadow } from '../stage.js';
 import { makeSky, makeParticles, makeWater, makeGrass, makeBirds, makeLightning, makeLightPillar, makeFlames, makeLightShafts, tickFx, clock } from './fx.js';
 import { std, rockField, columns, ruinWalls, brokenStatue, palms, slabs, ziggurat, brokenBridge, ribcage, skull, warningStele, makeSpiritGate, lamassu, processionalWalls, hoodoos, farTower, giantFeathers, nestRemains, clawMarks, canalBanks } from './structures.js';
 
@@ -17,11 +18,11 @@ export const ZONE_ENV = {
   },
   bozkir: {
     skyTop: 0x10141e, skyMid: 0x323a4a, horizon: 0x6a6a70, below: 0x2a2622, sunDir: [0.3, 0.25, -1], sunColor: 0x9fb2d0, sunSize: 0.08, clouds: 0.75, cloudColor: 0x3d4350,
-    fog: 0x56545a, fogNear: 40, fogFar: 175, hemi: [0x9aa6bd, 0x4a3a2a, 1.25], sun: [0xd8e0f0, 1.8, [25, 35, 20]], fill: [0xffb070, 0.45, [-20, 8, 30]], exposure: 1.2, ground: 'storm',
+    fog: 0x6a6460, fogNear: 40, fogFar: 175, hemiShadow: 1.4, rim: 0xffc890, rimI: 0.5, hemi: [0x9aa6bd, 0x4a3a2a, 1.25], sun: [0xd8e0f0, 1.8, [25, 35, 20]], fill: [0xffb070, 0.45, [-20, 8, 30]], exposure: 1.2, ground: 'storm',
   },
   derin: {
     skyTop: 0x05030b, skyMid: 0x1e0c30, horizon: 0x5a1a48, below: 0x0a0510, sunDir: [0.4, 0.5, -1], sunColor: 0x8a4ad0, sunSize: 0.03, clouds: 0.55, cloudColor: 0x2a1238, stars: true,
-    fog: 0x2a1236, fogNear: 30, fogFar: 170, hemi: [0x8a6ab8, 0x1a0a20, 1.1], sun: [0xc49cff, 1.1, [0, 30, -30]], fill: [0xff3a5a, 0.6, [-25, 5, 30]], exposure: 1.15, ground: 'abyss',
+    fog: 0x2a1236, fogNear: 30, fogFar: 170, hemiShadow: 1.35, rim: 0xff5a8a, rimI: 0.7, hemi: [0x8a6ab8, 0x1a0a20, 1.1], sun: [0xc49cff, 1.1, [0, 30, -30]], fill: [0xff3a5a, 0.6, [-25, 5, 30]], exposure: 1.15, ground: 'abyss',
   },
 };
 
@@ -95,28 +96,54 @@ function terrain(heightAt, x0, z0, x1, z1, seg, kind, env, opts = {}) {
   const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, roughnessMap: t.roughnessMap, vertexColors: true, roughness: 1, metalness: 0 });
   m.normalScale.set(0.8, 0.8);
   if (opts.emissiveMap) { m.emissiveMap = opts.emissiveMap; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 1.0; }
-  if (opts.crackMask) {
+  const crk = !!opts.crackMask;
+  if (crk) {
     // çatlak ışıması bölgesel: düşük frekanslı maske (köşe başı) ile çarpılır → döşeme tekrarı kırılır
     const ck = new Float32Array(p.count); for (let i = 0; i < p.count; i++) ck[i] = opts.crackMask(p.getX(i), p.getZ(i));
     g.setAttribute('crk', new THREE.BufferAttribute(ck, 1));
-    m.onBeforeCompile = (sh) => {
-      sh.vertexShader = 'attribute float crk; varying float vCrk;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vCrk = crk;');
-      sh.fragmentShader = 'varying float vCrk;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= vCrk;');
-    };
-    m.customProgramCacheKey = () => 'crk';
   }
-  return new THREE.Mesh(g, m);
+  // v5 arazi shader'ı: döşeme tekrarını kıran iki ölçekli örnekleme + büyük ölçekli ton değişimi + yamaçlarda üç düzlemli (triplanar) doku
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = (crk ? 'attribute float crk; varying float vCrk;\n' : '') + 'varying vec3 vTerrP; varying vec3 vTerrN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vTerrP = position; vTerrN = normal;' + (crk ? ' vCrk = crk;' : ''));
+    let f = (crk ? 'varying float vCrk;\n' : '') + 'varying vec3 vTerrP; varying vec3 vTerrN;\n' + sh.fragmentShader;
+    f = f.replace('#include <map_fragment>', `#ifdef USE_MAP
+      vec4 tA = texture2D( map, vMapUv );
+      vec4 tB = texture2D( map, vMapUv * 0.37 + vec2( 0.31, 0.17 ) );
+      float macro = texture2D( map, vTerrP.xz * 0.0071 + vec2( 0.5, 0.2 ) ).g;
+      float mixAB = smoothstep( 0.35, 0.65, macro );
+      vec4 sampledDiffuseColor = mix( tA, tB, mixAB * 0.6 );
+      vec3 wn = normalize( vTerrN ); float slope = 1.0 - wn.y;
+      if ( slope > 0.06 ) {
+        vec3 bw = pow( abs( wn ), vec3( 4.0 ) ); bw /= ( bw.x + bw.y + bw.z );
+        vec4 tx = texture2D( map, vTerrP.zy * 0.19 ); vec4 tz = texture2D( map, vTerrP.xy * 0.19 );
+        vec4 tri = tx * bw.x + sampledDiffuseColor * bw.y + tz * bw.z;
+        sampledDiffuseColor = mix( sampledDiffuseColor, tri, smoothstep( 0.06, 0.28, slope ) );
+      }
+      diffuseColor *= sampledDiffuseColor;
+      diffuseColor.rgb *= mix( 0.86, 1.1, macro );
+    #endif`);
+    if (crk) f = f.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= vCrk;');
+    sh.fragmentShader = f;
+  };
+  m.customProgramCacheKey = () => 'terr' + (crk ? 'crk' : '');
+  const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true; mesh.userData.noCast = true;
+  return mesh;
 }
 
 // ---------- ışık + gökyüzü + sis ----------
-function atmosphere(scene, env, q) {
+function atmosphere(scene, env, q, shadowBox = 16) {
   scene.background = new THREE.Color(env.horizon);
   scene.fog = new THREE.Fog(env.fog, env.fogNear * (q === 0 ? 0.8 : 1), env.fogFar * (q === 0 ? 0.75 : 1));
   const sky = makeSky(env, q); scene.add(sky);
-  const hemi = new THREE.HemisphereLight(env.hemi[0], env.hemi[1], env.hemi[2]); scene.add(hemi);
-  const sun = new THREE.DirectionalLight(env.sun[0], env.sun[1]); sun.position.set(...env.sun[2]); scene.add(sun);
+  // v5: gerçek gölge varken ortam ışığı biraz düşer → hacim ve derinlik
+  const hemi = new THREE.HemisphereLight(env.hemi[0], env.hemi[1], env.hemi[2] * (q > 0 ? (env.hemiShadow ?? 0.82) : 1)); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(env.sun[0], env.sun[1] * (q > 0 ? 1.12 : 1)); sun.position.set(...env.sun[2]); scene.add(sun);
   const fill = new THREE.DirectionalLight(env.fill[0], env.fill[1]); fill.position.set(...env.fill[2]); scene.add(fill);
-  return { sky, hemi, sun, fill };
+  // arka kenar ışığı (rim): güneşin karşısından, siluetleri ayırır
+  let rim = null;
+  if (q > 0) { const sp = new THREE.Vector3(...env.sun[2]); rim = new THREE.DirectionalLight(env.rim ?? env.skyMid ?? 0x8ab4ff, env.rimI ?? 0.55); rim.position.set(-sp.x, Math.max(8, sp.y * 0.6), -sp.z); scene.add(rim); }
+  const shadow = attachSunShadow(sun, scene, q, { box: shadowBox });
+  return { sky, hemi, sun, fill, rim, shadow };
 }
 
 // yerleşim yardımcısı: keep noktalarından uzak rastgele nokta
@@ -230,7 +257,7 @@ export function buildZoneEnv(scene, zoneId, lay, q = 1) {
     const zg = ziggurat(1.6); zg.position.set(W + 55, heightAt(W + 55, -60) - 2, -60); zg.rotation.y = -0.5; scene.add(zg);
     const zg2 = ziggurat(0.9, 'mudbrick', 0x9a7a5a); zg2.position.set(-50, heightAt(-50, -55) - 1, -55); zg2.rotation.y = 0.4; scene.add(zg2);
     // Ruh Kapısı (batı)
-    const gate = makeSpiritGate(q); gate.group.scale.setScalar(0.55); gate.group.position.set(lay.gate.x - 4.8, heightAt(lay.gate.x - 4.8, lay.gate.z) - 0.1, lay.gate.z); gate.group.rotation.y = Math.PI / 2; scene.add(gate.group); updaters.push(gate.update);
+    const gate = makeSpiritGate(q); gate.group.scale.setScalar(0.72); gate.group.position.set(lay.gate.x - 4.8, heightAt(lay.gate.x - 4.8, lay.gate.z) - 0.1, lay.gate.z); gate.group.rotation.y = Math.PI / 2; scene.add(gate.group); updaters.push(gate.update);
     // antik sulama kanalları (nehirden güneye), kerpiç kenarlı
     for (const k of heightAt.canals || []) { const len = k.z1 - k.z0; const w = makeWater(1.3, len, waterCol); w.position.set(k.x, -0.42, (k.z0 + k.z1) / 2); scene.add(w); scene.add(canalBanks(k.x, k.z0, k.x, k.z1, 2.1, heightAt));
       const cl = []; for (let z = k.z0; z < k.z1; z += 2.2) for (const sd of [-1, 1]) if (R() < 0.55) cl.push({ x: k.x + sd * 1.45, z: z + R(), r: 0.5, n: [5, 8, 12][q] });
@@ -367,7 +394,7 @@ function spearsAndShields(scene, R, W, H, avoid, heightAt, q) {
 // =====================================================================
 export function buildGateEnv(scene, q = 1) {
   const env = ZONE_ENV.gate; const R = rng(4242); const updaters = [];
-  const heightAt = makeHeightFn('gate', 0, 0); const atm = atmosphere(scene, env, q);
+  const heightAt = makeHeightFn('gate', 0, 0); const atm = atmosphere(scene, env, q, 22);
   const ground = terrain(heightAt, -110, -110, 110, 110, [70, 110, 140][q], 'plain', env); scene.add(ground);
   const gate = makeSpiritGate(q); gate.group.position.set(0, 0, -7); scene.add(gate.group); updaters.push(gate.update);
   // meydan: taş döşeme (kapı önü), çatlak ve eksik levhalar
@@ -407,7 +434,7 @@ export function buildGateEnv(scene, q = 1) {
 // =====================================================================
 export function buildBattleEnv(scene, zoneId, q = 1) {
   const id = ZONE_ENV[zoneId] ? zoneId : 'kiyi'; const env = ZONE_ENV[id]; const R = rng(99 + id.length); const updaters = [];
-  const atm = atmosphere(scene, { ...env, fogNear: 14, fogFar: 70 }, q);
+  const atm = atmosphere(scene, { ...env, fogNear: 14, fogFar: 70 }, q, 9);
   const base = makeHeightFn(id === 'derin' ? 'gate' : 'gate', 0, 0);
   const hf = (x, z) => base(x * 0.9, z * 0.9 + 4) * (id === 'derin' ? -1 : 1) * 0.8;
   const ground = terrain(hf, -60, -60, 60, 60, [40, 60, 80][q], env.ground, env, id === 'derin' ? { emissiveMap: crackEmissive(512, 5, 0.6), crackMask: (x, z) => Math.max(0.08, smooth(0.42, 0.68, noise2(x * 0.05, z * 0.05, 71, 3))) } : {}); scene.add(ground);

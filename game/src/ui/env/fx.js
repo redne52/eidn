@@ -226,3 +226,22 @@ export function makeLightShafts(items, { color = 0xffd9a0, opacity = 0.22 } = {}
   grp.userData.update = () => mats.forEach(([m, ph]) => (m.opacity = opacity * (0.65 + 0.35 * Math.sin(clock.t * 0.6 + ph))));
   return grp;
 }
+
+// Temas karartması (ucuz AO hissi): yapıların dibine yumuşak koyu leke — tek InstancedMesh, tek çizim çağrısı
+export function contactAO(scene, heightAt, skip = [], { max = 160, strength = 0.7 } = {}) {
+  blobShadow(); const box = new THREE.Box3(), size = new THREE.Vector3(), c = new THREE.Vector3(); const spots = [];
+  for (const o of scene.children) {
+    if (skip.includes(o) || o.isLight || o.isPoints || o.isSprite || o.userData.noAO) continue;
+    if (o.isMesh) { const m = Array.isArray(o.material) ? o.material[0] : o.material; if (!m || m.transparent || m.side === THREE.BackSide || o.isInstancedMesh) continue; }
+    box.setFromObject(o); if (box.isEmpty()) continue; box.getSize(size); box.getCenter(c);
+    const r = Math.max(size.x, size.z) * 0.62; if (r < 0.5 || r > 9 || size.y < 0.5) continue;
+    const gy = heightAt(c.x, c.z); if (box.min.y > gy + 0.8) continue; // havada olanlar
+    spots.push({ x: c.x, z: c.z, y: gy, r }); if (spots.length >= max) break;
+  }
+  if (!spots.length) return null;
+  const mat = blobMat.clone(); mat.opacity = strength;
+  const im = new THREE.InstancedMesh(blobGeo, mat, spots.length); const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), S = new THREE.Vector3(), P = new THREE.Vector3();
+  spots.forEach((s, i) => { P.set(s.x, s.y + 0.04, s.z); S.set(s.r, s.r, 1); M4.compose(P, Q, S); im.setMatrixAt(i, M4); });
+  im.instanceMatrix.needsUpdate = true; im.renderOrder = 1; im.userData.noOcc = true; im.userData.noAO = true; im.frustumCulled = false; scene.add(im);
+  return im;
+}

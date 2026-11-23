@@ -1,7 +1,7 @@
 import asyncio, sys, json
 from playwright.async_api import async_playwright
-URL = 'file:///home/claude/edin/game/dist/index.html'
-OUT = '/home/claude/edin/shots/'
+URL = 'file:///home/claude/eidn/game/dist/index.html'
+OUT = '/home/claude/eidn/shots/'
 # Tam akış (v3): seçim → Kıyı → savaş (kombo/bitirici) → zafer → yenilgi → dönüş büyüsü/öz yatırma → kaydet-yükle → bölge geçişi
 async def main(w, h, card):
     async with async_playwright() as p:
