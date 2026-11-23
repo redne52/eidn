@@ -8,6 +8,7 @@ import { skinTex } from './models/skin.js';
 import { upgradeSurface, SURF_DEFAULTS } from './models/surface.js';
 import { instantiateGlb } from './glb.js';
 import { buildRigidGlbModel } from './models/rigidAnim.js';
+import { buildSkelGlbModel } from './models/skelAnim.js';
 
 // ---------- küçük tween motoru (tüm animasyonlar buradan) ----------
 const tweens = [];
@@ -654,7 +655,14 @@ function dragonMeta(model, C) {
 }
 
 function fromGlb(id, st, reg, glb) {
-  if (glb.opts?.rigid) { try { return buildRigidGlbModel(id, st, glb, { tween, ease, shadowMat }); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] GLB modeli kurulamadı, kod modeli kullanılacak:', err); return null; } }
+  const lib = { tween, ease, shadowMat };
+  // iskeletli model: önce iskelet animatörü; kurulamazsa aynı modelin katı gövde sürümü; o da olmazsa kod modeli
+  if (glb.opts?.rigged) {
+    if (glb.opts.rigMap && typeof glb.opts.rigMap === 'object') { try { return buildSkelGlbModel(id, st, glb, lib, glb.opts.rigMap); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] İskelet animatörü kurulamadı, katı gövde kullanılacak:', err); } }
+    const again = instantiateGlb(id, st) || glb;
+    try { return buildRigidGlbModel(id, st, again, lib); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] GLB modeli kurulamadı, kod modeli kullanılacak:', err); return null; }
+  }
+  if (glb.opts?.rigid) { try { return buildRigidGlbModel(id, st, glb, lib); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] GLB modeli kurulamadı, kod modeli kullanılacak:', err); return null; } }
   const group = new THREE.Group(); const root = pivot(group);
   root.add(glb.scene); glb.scene.rotation.y = glb.rotY || 0; root.scale.setScalar((glb.scale || 1) * (reg.s || 1));
   const height = glb.height || (MODEL_HEIGHT[id] || 2.1) * (reg.s || 1);
