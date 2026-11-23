@@ -1,6 +1,6 @@
 import asyncio, sys
 from playwright.async_api import async_playwright
-BASE='file:///home/claude/edin/game/dist/index.html'
+BASE='file:///home/claude/eidn/game/dist/index.html'
 async def shot(b, q, path, w=1280, h=560, wait=2500, extra=[]):
     pg = await (await b.new_context(viewport={'width':w,'height':h})).new_page()
     errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -12,7 +12,7 @@ async def shot(b, q, path, w=1280, h=560, wait=2500, extra=[]):
 async def main(mode):
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
-        S='/home/claude/edin/shots/'
+        S='/home/claude/eidn/shots/'
         errs=[]
         if mode in ('all','gal'):
             errs+=await shot(b,'?gallery=1',S+'v3_gallery.png')

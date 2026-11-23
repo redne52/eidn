@@ -2,9 +2,9 @@
 import asyncio, json, math, sys, time
 from playwright.async_api import async_playwright
 W, Hh = 800, 360
-BASE = 'file:///home/claude/edin/game/dist/index.html'
+BASE = 'file:///home/claude/eidn/game/dist/index.html'
 Q = '?test=1&dtcap=1&gfx=0'
-SH = '/home/claude/edin/shots/'
+SH = '/home/claude/eidn/shots/sonra/'
 res = {}
 
 V1 = {"version": 1, "savedAt": 1763830000000, "clock": 812.4, "keeper": {"level": 1},

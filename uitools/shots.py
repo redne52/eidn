@@ -1,8 +1,8 @@
 import asyncio, sys, json
 from playwright.async_api import async_playwright
 CARD = int(__import__('os').environ.get('CARD','0'))
-URL = 'file:///home/claude/edin/game/dist/index.html'
-OUT = '/home/claude/edin/shots/'
+URL = 'file:///home/claude/eidn/game/dist/index.html'
+OUT = '/home/claude/eidn/shots/'
 async def main(w=800, h=360, tag='800'):
     async with async_playwright() as p:
         b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])

@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import { makeCrystal } from './crystal.js';
 import R from '../data/rules.json';
 import { getModel, tween, ease } from './models.js';
-import { toScreen, stage } from './stage.js';
+import { toScreen, stage, flagShadows } from './stage.js';
 import { buildZoneEnv, buildGateEnv, passageArch, ZONE_ENV } from './env/zones.js';
 import { ritualTex } from './env/textures.js';
-import { blobShadow } from './env/fx.js';
+import { blobShadow, contactAO } from './env/fx.js';
 import { tr, LEVEL_COLOR } from './labels.js';
 import { camState, camOffset, stepCam } from './camCtl.js';
 import { buildNode, buildCamp } from './env/resources.js';
@@ -43,6 +43,7 @@ export function createWorldView(game, tagLayer) {
 
   const player = getModel(game.creature.id, stageOf(game.creature.level)); player.group.scale.multiplyScalar(1.25); scene.add(player.group);
   const pShadow = blobShadow(0.9); scene.add(pShadow);
+  if (q > 0) { pShadow.material = pShadow.material.clone(); pShadow.material.opacity = 0.55; } // gerçek gölge varken disk yalnız temas karartması
   const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 320);
   // kamera: önceki takip mantığı aynı; hafif daha alçak ve ileri bakış → ufuk ve uzak yapılar görünür
   // kamera: parmakla döndürülebilir (camCtl). Varsayılan açı eski sabit görünümle aynı.
@@ -58,6 +59,9 @@ export function createWorldView(game, tagLayer) {
     if (o.isInstancedMesh) { if (o.count <= 400 && o.geometry.boundingSphere.radius > 0.6 && !m.userData?.wind && m.side !== THREE.DoubleSide) occluders.push(o); }
     else if (r > 1.4 && r < 150) occluders.push(o);
   });
+  // Orta: yalnız karakterler gölge düşürür (dekor gölge alır); Yüksek: büyük dekor da düşürür
+  if (q > 0) { flagShadows(scene, { cast: q >= 2 }); flagShadows(player.group); }
+  contactAO(scene, H0, [player.group, env.ground]);
   function placeCamera(dt, py) {
     camOffset(camOff); const full = camOff.length();
     lookAhead.set(-Math.sin(camState.yaw) * 4.5, 0.9, -Math.cos(camState.yaw) * 4.5);
@@ -100,7 +104,8 @@ export function createWorldView(game, tagLayer) {
   const TAG_RANGE = 13;
   const groundC = new Map();
   const view = {
-    scene, camera, player, env, exposure: ZONE_ENV[zone.id].exposure, cine: null, isWorld: true, yaw: camState.yaw,
+    scene, camera, player, env, exposure: ZONE_ENV[zone.id].exposure, cine: null, isWorld: true, yaw: camState.yaw, lookId: zone.id,
+    shadowFocus: env.atm && env.atm.shadow ? () => env.atm.shadow(player.group.position) : null,
     update(dt) {
       env.update(dt, camera);
       // v4.1: çanta doluyken yere düşen çekirdekler — haritada parlayan kristal
@@ -154,7 +159,7 @@ export function createWorldView(game, tagLayer) {
         if (!m.alive || d > R.constants.cullDistance) continue;
         seen.add(m.uid);
         let o = mobs.get(m.uid);
-        if (!o) { o = getModel(m.typeId, m.isGuardian ? 3 : stageOf(m.level)); o.prev = { x: m.pos.x, z: m.pos.z }; scene.add(o.group); o.sh = blobShadow(m.isGuardian ? 1.8 : 0.9); scene.add(o.sh); mobs.set(m.uid, o); }
+        if (!o) { o = getModel(m.typeId, m.isGuardian ? 3 : stageOf(m.level)); o.prev = { x: m.pos.x, z: m.pos.z }; scene.add(o.group); if (q > 0) flagShadows(o.group); o.sh = blobShadow(m.isGuardian ? 1.8 : 0.9); if (q > 0) { o.sh.material = o.sh.material.clone(); o.sh.material.opacity = 0.55; } scene.add(o.sh); mobs.set(m.uid, o); }
         const mdx = m.pos.x - o.prev.x, mdz = m.pos.z - o.prev.z;
         if (Math.hypot(mdx, mdz) > 0.001) o.group.rotation.y = Math.atan2(mdx, mdz);
         o.prev = { x: m.pos.x, z: m.pos.z };
@@ -193,6 +198,7 @@ export function createWorldView(game, tagLayer) {
 // ---------- KAPI sahnesi: açılış, yumurta seçimi, ana üs ----------
 export function createGateView() {
   const scene = new THREE.Scene(); const env = buildGateEnv(scene, stage.quality);
+  contactAO(scene, env.heightAt, []);
   const keeper = getModel('keeper'); keeper.group.position.set(-3.2, 0, -1.4); keeper.group.rotation.y = 0.5; scene.add(keeper.group);
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.3, 320);
   const cam = { pos: new THREE.Vector3(0, 3.2, 9), look: new THREE.Vector3(0, 2.2, -2) };
@@ -200,9 +206,11 @@ export function createGateView() {
   let creature = null, pedestalGroup = null, eggs = [], hatchEgg = null;
   const fx = new THREE.Group(); scene.add(fx);
   const view = {
-    scene, camera, keeper, env, exposure: ZONE_ENV.gate.exposure,
+    scene, camera, keeper, env, exposure: ZONE_ENV.gate.exposure, lookId: 'gate',
+    shadowFocus: env.atm && env.atm.shadow ? (() => { const f = new THREE.Vector3(0, 0, 0); return () => env.atm.shadow(f); })() : null,
     update(dt) {
       env.update(dt);
+      if (stage.quality > 0 && (view._shT = (view._shT || 0) - dt) <= 0) { view._shT = 1; flagShadows(scene, { cast: stage.quality >= 2 }); live.forEach((m) => flagShadows(m.group)); }
       camera.position.lerp(cam.pos, Math.min(1, dt * 3)); const l = new THREE.Vector3(); camera.getWorldDirection(l);
       view._look = view._look ? view._look.lerp(cam.look, Math.min(1, dt * 3)) : cam.look.clone(); camera.lookAt(view._look);
       live.forEach((m) => { m.anim.update(dt); if (m._spin) m.group.rotation.y += dt * 0.5; });

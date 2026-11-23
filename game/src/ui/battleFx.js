@@ -93,9 +93,12 @@ export function createBattleFx(scene, { quality = 1, reduced = () => false } = {
     quick(at, dir = 1) { slash(at, { color: 0xffffff, r: 0.7, w: 0.06, rot: dir > 0 ? 0.6 : 2.5, dur: 0.2 }); sparks(at, 0xfff0c0, 5, { speed: 2.4, up: 1, size: 0.14, dur: 0.35 }); },
     // ağır: geniş iz + şok halkası + toz
     heavy(at, dir = 1) {
-      slash(at, { color: 0xffd27a, r: 1.15, w: 0.14, rot: dir > 0 ? -0.4 : 3.5, dur: 0.32, arc: 2.6 });
-      ring(at, { color: 0xffc66a, to: 2.4 }); sparks(at, 0xd8b890, 10, { speed: 3.5, up: 1.6, size: 0.3, dur: 0.6, grav: 8 });
-      flash(at, 0xffe2a0, 1.8);
+      // v5: çift iz (dış sıcak + iç beyaz çekirdek), iki şok halkası (biri yerde), sıcak kıvılcım + toz, büyük flaş
+      slash(at, { color: 0xffb04a, r: 1.25, w: 0.2, rot: dir > 0 ? -0.4 : 3.5, dur: 0.36, arc: 2.7 });
+      slash(at, { color: 0xffffff, r: 1.1, w: 0.07, rot: dir > 0 ? -0.35 : 3.45, dur: 0.24, arc: 2.5 });
+      ring(at, { color: 0xffc66a, to: 2.8 }); ring(at.clone().setY(0.08), { color: 0xffe0a0, to: 3.4, dur: 0.6, opacity: 0.7 });
+      sparks(at, 0xffd080, 14, { speed: 4.2, up: 1.8, size: 0.2, dur: 0.55, grav: 9 }); sparks(at, 0xc8a878, 8, { speed: 2.5, up: 1.2, size: 0.42, dur: 0.8, grav: 3 });
+      flash(at, 0xfff0c0, 2.6, 0.26);
     },
     crit(at) { flash(at, 0xffd84a, 2.6, 0.28); sparks(at, 0xffd84a, 16, { speed: 4.5, up: 2.4, size: 0.2, dur: 0.6 }); },
     block(at) { flash(at, 0xb8d0ff, 1.2, 0.18); sparks(at, 0xdde8ff, 6, { speed: 3, up: 1, size: 0.12, dur: 0.3, grav: 4 }); },

@@ -2,7 +2,7 @@
 import asyncio, json, math, sys
 from playwright.async_api import async_playwright
 W, Hh = 800, 360
-URL = 'file:///home/claude/edin/game/dist/index.html?test=1&dtcap=1&gfx=0'
+URL = 'file:///home/claude/eidn/game/dist/index.html?test=1&dtcap=1&gfx=0'
 res = {}
 async def main():
   async with async_playwright() as p:

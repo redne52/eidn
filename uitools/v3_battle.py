@@ -1,7 +1,7 @@
 import asyncio, sys, json
 from playwright.async_api import async_playwright
-URL = 'file:///home/claude/edin/game/dist/index.html'
-OUT = '/home/claude/edin/shots/'
+URL = 'file:///home/claude/eidn/game/dist/index.html'
+OUT = '/home/claude/eidn/shots/'
 # kullanım: v3_battle.py <w> <h> <etiket> <kart 0-3> [ek_sorgu] [mod: fin|full]
 async def main(w, h, tag, card, extra='', mode='fin'):
     async with async_playwright() as p:

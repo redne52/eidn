@@ -19,17 +19,28 @@ varying vec3 vN; varying vec3 vV; varying vec3 vP;
 float h(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 void main(){
   vec3 n = normalize(vN); vec3 v = normalize(vV);
-  float fr = pow(1.0 - abs(dot(n, v)), 2.2);
+  float ndv = abs(dot(n, v));
+  float fr = pow(1.0 - ndv, 2.4);
+  // v5: yontulmuş yüzeyler (düz normaller) + sahte gökyüzü yansıması + iç kırılma desenleri
+  vec3 rf = reflect(-v, n); float sky = smoothstep(-0.3, 0.9, rf.y);
+  vec3 rr = refract(-v, n, 0.66);
+  float caust = pow(abs(sin(dot(rr, vec3(3.1, 5.7, 2.3)) * 3.0 + uTime * 1.3)), 10.0) + pow(abs(sin(dot(rr, vec3(-4.3, 2.2, 3.9)) * 2.4 - uTime * 0.9)), 14.0);
   float inner = 0.55 + 0.45 * sin(uTime * 2.0 + vP.y * 4.0);
-  vec3 c = uCol * (0.35 + 0.5 * inner) + uCol * fr * 1.6 + vec3(1.0) * pow(fr, 6.0) * 0.6;
+  vec3 deep = uCol * 0.22;
+  vec3 c = mix(deep, uCol * (0.6 + 0.5 * inner), smoothstep(0.15, 0.95, ndv));
+  c += uCol * caust * 0.9;
+  c += mix(vec3(0.04, 0.05, 0.08), vec3(1.0, 0.96, 0.9), sky) * fr * 0.9;
+  c += uCol * fr * 1.4 + vec3(1.0) * pow(fr, 6.0) * 0.8;
+  float spark = step(0.985, h(floor(vP * 26.0 + floor(uTime * 3.0)))) * pow(ndv, 4.0);
+  c += vec3(1.0) * spark * 2.0;
   // çatlaklar: yüzey koordinatında ince parlak çizgiler, uCrack arttıkça çoğalır
   float l1 = abs(fract(vP.x * 3.1 + vP.y * 1.7 + h(floor(vP * 3.0)) ) - 0.5);
   float l2 = abs(fract(vP.z * 2.6 - vP.y * 2.2) - 0.5);
   float w = 0.02 + 0.06 * uCrack;
   float cr = (1.0 - smoothstep(0.0, w, l1)) * step(0.3, uCrack + h(floor(vP * 2.0)) * 0.7) + (1.0 - smoothstep(0.0, w, l2)) * step(0.65, uCrack);
-  c += uCrackCol * cr * uCrack * 3.0;
-  c *= (1.0 + uGlow);
-  gl_FragColor = vec4(c, uAlpha * (0.78 + 0.22 * fr));
+  c += uCrackCol * cr * uCrack * 4.0;
+  c *= (1.15 + uGlow);
+  gl_FragColor = vec4(c, uAlpha * (0.82 + 0.18 * fr));
 }`;
 
 export function makeCrystal(type, { size = 0.32 } = {}) {
@@ -41,22 +52,26 @@ export function makeCrystal(type, { size = 0.32 } = {}) {
     let j = seen.get(k); if (!j) { j = 0.85 + Math.random() * 0.3; seen.set(k, j); }
     pa.setXYZ(i, pa.getX(i) * j, pa.getY(i) * j * 1.55, pa.getZ(i) * j);
   }
-  geo.computeVertexNormals();
+  const fgeo = geo.toNonIndexed(); geo.dispose(); fgeo.computeVertexNormals(); // düz yüzeyler: yontulmuş taş
   const col = new THREE.Color(CORE_COLOR[type] ?? 0x9a8468);
-  const mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: true,
+  const mat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
     uniforms: { uCol: { value: col }, uCrackCol: { value: new THREE.Color(0xffffff) }, uCrack: { value: 0 }, uTime: { value: 0 }, uAlpha: { value: 1 }, uGlow: { value: 0 } } });
-  const mesh = new THREE.Mesh(geo, mat);
+  const mesh = new THREE.Mesh(fgeo, mat);
   const group = new THREE.Group(); group.add(mesh);
+  // iç çekirdek: kristalin içinde nabız gibi atan parlak öz (eklemeli, son işlemde parlar)
+  const coreGeo = new THREE.IcosahedronGeometry(size * 0.42, 1);
+  const coreMat = new THREE.MeshBasicMaterial({ color: col.clone().multiplyScalar(2.2), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const core = new THREE.Mesh(coreGeo, coreMat); core.scale.y = 1.4; core.renderOrder = 2; mesh.renderOrder = 1; group.add(core);
   // yumuşak hale (additive sprite)
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }));
   halo.scale.setScalar(size * 4.2); group.add(halo);
   return {
     group, mesh, halo, type,
-    update(dt) { mat.uniforms.uTime.value += dt; mesh.rotation.y += dt * 0.9; },
+    update(dt) { mat.uniforms.uTime.value += dt; mesh.rotation.y += dt * 0.9; const tt = mat.uniforms.uTime.value; core.rotation.y -= dt * 1.7; core.scale.setScalar(0.9 + 0.12 * Math.sin(tt * 3.1)); core.scale.y *= 1.4; },
     setCrack(k, color) { mat.uniforms.uCrack.value = k; if (color != null) mat.uniforms.uCrackCol.value.set(color); },
-    setGlow(k) { mat.uniforms.uGlow.value = k; halo.material.opacity = 0.55 + k * 0.6; },
-    setAlpha(a) { mat.uniforms.uAlpha.value = a; halo.material.opacity = 0.55 * a; },
-    dispose() { geo.dispose(); mat.dispose(); halo.material.dispose(); },
+    setGlow(k) { mat.uniforms.uGlow.value = k; halo.material.opacity = 0.55 + k * 0.6; coreMat.opacity = Math.min(1, 0.85 + k * 0.3); },
+    setAlpha(a) { mat.uniforms.uAlpha.value = a; halo.material.opacity = 0.55 * a; coreMat.opacity = 0.85 * a; },
+    dispose() { fgeo.dispose(); mat.dispose(); halo.material.dispose(); coreGeo.dispose(); coreMat.dispose(); },
   };
 }
 

@@ -4,9 +4,9 @@ import asyncio, json, sys, time
 from playwright.async_api import async_playwright
 W, Hh = int(sys.argv[1]) if len(sys.argv) > 1 else 800, int(sys.argv[2]) if len(sys.argv) > 2 else 360
 SHORT = W != 800
-BASE = 'file:///home/claude/edin/game/dist/index.html'
+BASE = 'file:///home/claude/eidn/game/dist/index.html'
 Q = '?test=1&dtcap=1&gfx=0'
-SH = '/home/claude/edin/shots/'
+SH = '/home/claude/eidn/shots/sonra/'
 TAG = '' if not SHORT else f'_{W}'
 res = {}
 
