@@ -1,0 +1,60 @@
+('mob', 'ugallu', 1) (1.0, 5.36, 0.38)
+('mob', 'girtablullu', 1) (1.0, 6.72, 0.46)
+('mob', 'kulullu', 1) (1.0, 7.27, 0.29)
+('mob', 'kusarikku', 1) (1.0, 6.61, 0.42)
+('mob', 'ugallu', 5) (1.0, 3.92, 0.26)
+('mob', 'girtablullu', 5) (1.0, 4.46, 0.3)
+('mob', 'kulullu', 5) (1.0, 7.72, 0.26)
+('mob', 'kusarikku', 5) (1.0, 6.83, 0.36)
+('mob', 'ugallu', 9) (1.0, 4.06, 0.26)
+('mob', 'girtablullu', 9) (1.0, 4.59, 0.29)
+('mob', 'kulullu', 9) (1.0, 8.15, 0.25)
+('mob', 'kusarikku', 9) (1.0, 7.16, 0.34)
+('mob', 'ugallu', 13) (1.0, 4.23, 0.25)
+('mob', 'girtablullu', 13) (1.0, 4.7, 0.28)
+('mob', 'kulullu', 13) (1.0, 8.77, 0.24)
+('mob', 'kusarikku', 13) (1.0, 7.45, 0.32)
+('guard', 'ugallu', 'lahmu') (0.84, 8.12)
+('guard', 'girtablullu', 'lahmu') (0.85, 9.16)
+('guard', 'kulullu', 'lahmu') (0.91, 17.99)
+('guard', 'kusarikku', 'lahmu') (0.72, 14.17)
+('guard', 'ugallu', 'anzu') (0.57, 9.05)
+('guard', 'girtablullu', 'anzu') (0.6, 10.47)
+('guard', 'kulullu', 'anzu') (0.6, 21.31)
+('guard', 'kusarikku', 'anzu') (0.51, 16.23)
+('guard', 'ugallu', 'usumgallu') (0.55, 10.46)
+('guard', 'girtablullu', 'usumgallu') (0.6, 11.9)
+('guard', 'kulullu', 'usumgallu') (0.55, 23.56)
+('guard', 'kusarikku', 'usumgallu') (0.39, 18.4)
+('grade', 'ugallu', 'B') (0.72, 5.19)
+('grade', 'ugallu', 'A') (0.81, 5.79)
+('grade', 'ugallu', 'S') (0.9, 5.62)
+('grade', 'girtablullu', 'B') (0.71, 6.92)
+('grade', 'girtablullu', 'A') (0.86, 6.96)
+('grade', 'girtablullu', 'S') (0.97, 6.6)
+('grade', 'kulullu', 'B') (0.72, 28.3)
+('grade', 'kulullu', 'A') (0.95, 24.95)
+('grade', 'kulullu', 'S') (0.99, 22.87)
+('grade', 'kusarikku', 'B') (0.88, 16.94)
+('grade', 'kusarikku', 'A') (0.99, 14.19)
+('grade', 'kusarikku', 'S') (1.0, 13.2)
+('cross', 'girtablullu', 'ugallu') (0.44, 6.17)
+('cross', 'girtablullu', 'kulullu') (0.76, 14.37)
+('cross', 'girtablullu', 'kusarikku') (0.78, 10.19)
+('cross', 'kulullu', 'ugallu') (0.32, 12.48)
+('cross', 'kulullu', 'kusarikku') (0.64, 22.36)
+('cross', 'kusarikku', 'ugallu') (0.48, 9.81)
+--- seviye suresi (Ugallu C, ayni seviye canavar, tur 4 sn, yurume+toparlanma 25 sn) ---
+1 -> 2 av 6.7 dk 5.2
+2 -> 3 av 15.0 dk 11.6
+3 -> 4 av 23.2 dk 18.0
+4 -> 5 av 30.7 dk 20.8
+5 -> 6 av 25.0 dk 16.9
+6 -> 7 av 29.3 dk 19.9
+7 -> 8 av 33.3 dk 22.6
+8 -> 9 av 37.2 dk 25.6
+9 -> 10 av 40.7 dk 28.0
+10 -> 11 av 30.2 dk 20.7
+11 -> 12 av 32.4 dk 22.3
+12 -> 13 av 34.6 dk 24.2
+toplam dk 236

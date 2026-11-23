@@ -1,0 +1,4 @@
+{
+  "_not": "Meshy / Hy 3D GLB modelleri buraya eklenir. Ornek: {\"id\": \"ugallu\", \"stage\": 3, \"url\": \"models/ugallu_3.glb\", \"height\": 2.1, \"scale\": 1, \"rotY\": 0}. stage yazilmazsa butun evreler icin kullanilir. Liste bosken oyun kodla uretilmis modelleri kullanir.",
+  "models": []
+}

@@ -1,0 +1,3 @@
+import { getModel } from '../src/ui/models.js';
+const ids=[['ugallu',1],['ugallu',2],['ugallu',3],['girtablullu',1],['girtablullu',2],['girtablullu',3],['kulullu',1],['kulullu',2],['kulullu',3],['kusarikku',1],['kusarikku',2],['kusarikku',3],['ugallu_yabani',2],['basmu',1],['uridimmu',1],['mushussu',3],['usumgallu',3],['lahmu',3],['anzu',3],['keeper',1],['egg','S']];
+for (const [id,st] of ids){const m=getModel(id,st);let dc=0,t=0;m.group.traverse(o=>{if(o.isMesh){dc++;const g=o.geometry;t+=(g.index?g.index.count:g.attributes.position.count)/3;}});console.log((id+' '+st).padEnd(18),'çağrı',String(dc).padStart(3),'üçgen',Math.round(t));}

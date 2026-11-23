@@ -1,0 +1,1825 @@
+{
+ "meta": {
+  "name": "Edin",
+  "version": "rules-v4.1",
+  "date": "2026-11-18",
+  "maxLevel": 13,
+  "note": "Tek kisilik ilk surum. Sayilar denge testine gore degisebilir."
+ },
+ "formulas": {
+  "statAtLevel": "base + growth * (level - 1); HP ve Saldiri ayrica derece stat carpani ile carpilir",
+  "damage": "atk * 100 / (100 + def) * rand(0.90,1.10) * hamleCarpani * zincirBonusu * crit * block * savunma * kalkan * yorgunluk",
+  "critChance": "krit / (krit + 100), tavan 0.40",
+  "blockChance": "blok / (blok + 100), tavan 0.40",
+  "dodgeChance": "cev / (cev + rakipCev + 100), tavan 0.35",
+  "turnOrder": "cevikligi yuksek once vurur; esitse rastgele",
+  "ozPerKill": "(10 + 5 * canavarSeviye) * seviyeFarkiCarpani * bolgeCarpani",
+  "ozToNext": "round(100 * level^1.6 / 10) * 10",
+  "sekelPerKill": "(sekelPerKillBase + canavarSeviye) * bolgeCarpani",
+  "fatigue": "15. turdan sonra iyilesmeler x0.5 ve her tur hasar +%5 birikir (sonsuz savasi engeller)",
+  "finisher": "hamleCarpani = finisherBase + finisherPerPoint * puan; kacinilamaz"
+ },
+ "constants": {
+  "randMin": 0.9,
+  "randMax": 1.1,
+  "critMult": 1.5,
+  "blockMult": 0.5,
+  "chanceCap": 0.4,
+  "dodgeCap": 0.35,
+  "turnSeconds": 15,
+  "skillUnlockLevel": 5,
+  "secondSkillLevel": 10,
+  "adultLevel": 10,
+  "growthStages": [
+   1,
+   5,
+   10
+  ],
+  "gateFullHeal": true,
+  "woundedSeconds": 60,
+  "returnSpellSeconds": 10,
+  "freeRunsWithoutLoss": 3,
+  "bagSlots": 20,
+  "beltPockets": 4,
+  "monsterRespawnSeconds": 45,
+  "fatigueTurn": 15,
+  "fatigueHealMult": 0.5,
+  "fatigueDamagePerTurn": 0.05,
+  "debugOzMult": 1,
+  "timeoutAction": "autoChoice: telgraf varsa savunma, 5 puanda bitirici, yoksa zincirin siradaki hamlesi",
+  "bothDieSameTurn": "oyuncu kaybeder",
+  "minDamage": 1,
+  "guardianOzMult": 5,
+  "guardianSekel": {
+   "lahmu": 80,
+   "anzu": 200,
+   "usumgallu": 450
+  },
+  "moveSpeed": 5,
+  "monsterWanderRadius": 8,
+  "monsterWanderSpeed": 1.5,
+  "attackButtonRadius": 3,
+  "cullDistance": 30,
+  "quitMidFight": "yenilgi sayilir",
+  "bagStack": 20,
+  "groundItemSeconds": 30,
+  "sellRatio": 0.1,
+  "eggSellPrice": 25,
+  "levelUpOnlyAtGate": true,
+  "sekelPerKillBase": 5,
+  "chainUnlockLevels": [
+   1,
+   5,
+   10
+  ]
+ },
+ "grades": {
+  "C": {
+   "powerMult": 1,
+   "statMult": 1,
+   "secondSkill": false
+  },
+  "B": {
+   "powerMult": 1.071,
+   "statMult": 1.035,
+   "secondSkill": false
+  },
+  "A": {
+   "powerMult": 1.166,
+   "statMult": 1.08,
+   "secondSkill": true
+  },
+  "S": {
+   "powerMult": 1.369,
+   "statMult": 1.17,
+   "secondSkill": true
+  }
+ },
+ "eggOdds": {
+  "normal": {
+   "C": 0.6,
+   "B": 0.28,
+   "A": 0.1,
+   "S": 0.02
+  },
+  "guardian": {
+   "C": 0.45,
+   "B": 0.33,
+   "A": 0.17,
+   "S": 0.05
+  }
+ },
+ "eggHatchWins": {
+  "C": 8,
+  "B": 12,
+  "A": 20,
+  "S": 30
+ },
+ "levelDiff": [
+  {
+   "minDiff": 3,
+   "mult": 1.5,
+   "color": "kirmizi"
+  },
+  {
+   "minDiff": 1,
+   "mult": 1.2,
+   "color": "turuncu"
+  },
+  {
+   "minDiff": -2,
+   "mult": 1,
+   "color": "sari"
+  },
+  {
+   "minDiff": -4,
+   "mult": 0.4,
+   "color": "yesil"
+  },
+  {
+   "minDiff": -99,
+   "mult": 0,
+   "color": "gri"
+  }
+ ],
+ "creatures": {
+  "ejder_ates": {
+   "name": "Ateş Ejderhası",
+   "role": "hasar",
+   "legendary": false,
+   "base": {
+    "hp": 90,
+    "atk": 16,
+    "def": 4,
+    "cev": 12,
+    "krit": 12,
+    "blok": 4
+   },
+   "growth": {
+    "hp": 22,
+    "atk": 4.2,
+    "def": 1.5,
+    "cev": 2,
+    "krit": 1.5,
+    "blok": 1
+   },
+   "passive": {
+    "id": "kor_ofkesi",
+    "name": "Kor Öfkesi",
+    "effect": {
+     "critMult": 1.6
+    }
+   },
+   "chains": [
+    {
+     "id": "kor_pence",
+     "name": "Kor Pençe",
+     "seq": [
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "critBonus": 0.25
+     }
+    },
+    {
+     "id": "alev_saganagi",
+     "name": "Alev Sağanağı",
+     "seq": [
+      "quick",
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.35,
+      "undodgeable": true
+     }
+    },
+    {
+     "id": "ejder_kukremesi",
+     "name": "Ejder Kükremesi",
+     "seq": [
+      "quick",
+      "heavy",
+      "heavy"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "weaken": {
+       "atkMult": 0.8,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "ates_nefesi",
+    "name": "Ateş Nefesi",
+    "effect": {
+     "critAtMax": true,
+     "perPointBonus": 0.05
+    }
+   },
+   "element": "ates",
+   "colors": "kırmızı/siyah pul",
+   "legacyOf": "ugallu",
+   "kind": "ejderha"
+  },
+  "ejder_su": {
+   "name": "Su Ejderhası",
+   "role": "iyilestirme",
+   "legendary": false,
+   "base": {
+    "hp": 110,
+    "atk": 13,
+    "def": 6,
+    "cev": 10,
+    "krit": 5,
+    "blok": 8
+   },
+   "growth": {
+    "hp": 18,
+    "atk": 4.7,
+    "def": 1.6,
+    "cev": 2,
+    "krit": 1,
+    "blok": 1.5
+   },
+   "passive": {
+    "id": "apsu_pulu",
+    "name": "Apsû Pulu",
+    "effect": {
+     "regenMaxHpPerTurn": 0
+    }
+   },
+   "chains": [
+    {
+     "id": "apsu_pinari",
+     "name": "Apsû Pınarı",
+     "seq": [
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 0.85,
+      "healMaxHp": 0.1
+     }
+    },
+    {
+     "id": "gelgit_kanadi",
+     "name": "Gelgit Kanadı",
+     "seq": [
+      "quick",
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "slow": {
+       "cevMult": 0.7,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "derin_dalga",
+     "name": "Derin Dalga",
+     "seq": [
+      "quick",
+      "heavy",
+      "heavy"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "healMaxHp": 0.06
+     }
+    }
+   ],
+   "finisher": {
+    "id": "ea_nin_nefesi",
+    "name": "Ea'nın Nefesi",
+    "effect": {
+     "healPerPoint": 0.04
+    }
+   },
+   "element": "su",
+   "colors": "mavi/turkuaz pul",
+   "legacyOf": "kulullu",
+   "kind": "ejderha"
+  },
+  "ejder_zehir": {
+   "name": "Zehir Ejderhası",
+   "role": "zehir",
+   "legendary": false,
+   "base": {
+    "hp": 100,
+    "atk": 15,
+    "def": 6,
+    "cev": 10,
+    "krit": 8,
+    "blok": 6
+   },
+   "growth": {
+    "hp": 19,
+    "atk": 3.4,
+    "def": 2,
+    "cev": 2,
+    "krit": 1.5,
+    "blok": 1.5
+   },
+   "passive": {
+    "id": "zehir_pulu",
+    "name": "Zehir Pulu",
+    "effect": {
+     "flatBlok": 6
+    }
+   },
+   "chains": [
+    {
+     "id": "zehirli_dis",
+     "name": "Zehirli Diş",
+     "seq": [
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1,
+      "poison": {
+       "perTurnAtkMult": 0.5,
+       "turns": 3
+      }
+     }
+    },
+    {
+     "id": "bogucu_kuyruk",
+     "name": "Boğucu Kuyruk",
+     "seq": [
+      "heavy",
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "slow": {
+       "cevMult": 0.7,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "zehir_aynasi",
+     "name": "Zehir Aynası",
+     "seq": [
+      "heavy",
+      "quick",
+      "quick"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 0.9,
+      "reflect": {
+       "value": 0.3,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "mor_sis",
+    "name": "Mor Sis Nefesi",
+    "effect": {
+     "poisonPerPoint": 0.15,
+     "poisonTurns": 3
+    }
+   },
+   "element": "zehir",
+   "colors": "yeşil/koyu mor pul",
+   "legacyOf": "girtablullu",
+   "kind": "ejderha"
+  },
+  "ejder_tas": {
+   "name": "Taş Ejderhası",
+   "role": "savunma",
+   "legendary": false,
+   "base": {
+    "hp": 120,
+    "atk": 13,
+    "def": 10,
+    "cev": 6,
+    "krit": 5,
+    "blok": 12
+   },
+   "growth": {
+    "hp": 22,
+    "atk": 4.1,
+    "def": 2,
+    "cev": 1,
+    "krit": 1,
+    "blok": 1.7
+   },
+   "passive": {
+    "id": "kaya_govde",
+    "name": "Kaya Gövde",
+    "effect": {
+     "counterOnBlockAtkMult": 0.2
+    }
+   },
+   "chains": [
+    {
+     "id": "boynuz_carpmasi",
+     "name": "Boynuz Çarpması",
+     "seq": [
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "stunChance": 0.2
+     }
+    },
+    {
+     "id": "tas_kalkan",
+     "name": "Taş Kalkan",
+     "seq": [
+      "heavy",
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 0.9,
+      "shield": {
+       "takenMult": 0.6,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "esik_kayasi",
+     "name": "Eşik Kayası",
+     "seq": [
+      "heavy",
+      "quick",
+      "quick"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "shield": {
+       "takenMult": 0.75,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "dag_darbesi",
+    "name": "Dağ Darbesi",
+    "effect": {
+     "shieldPerPoint": 0.06,
+     "shieldTurns": 2
+    }
+   },
+   "element": "tas",
+   "colors": "bronz/kaya pul",
+   "legacyOf": "kusarikku",
+   "kind": "ejderha"
+  },
+  "ugallu": {
+   "name": "Ugallu",
+   "role": "hasar",
+   "legendary": false,
+   "base": {
+    "hp": 90,
+    "atk": 16,
+    "def": 4,
+    "cev": 12,
+    "krit": 12,
+    "blok": 4
+   },
+   "growth": {
+    "hp": 22,
+    "atk": 4.2,
+    "def": 1.5,
+    "cev": 2,
+    "krit": 1.5,
+    "blok": 1
+   },
+   "passive": {
+    "id": "aslan_ofkesi",
+    "name": "Aslan ofkesi",
+    "effect": {
+     "critMult": 1.6
+    }
+   },
+   "chains": [
+    {
+     "id": "aslan_pencesi",
+     "name": "Aslan Pençesi",
+     "seq": [
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "critBonus": 0.25
+     }
+    },
+    {
+     "id": "firtina_pencesi",
+     "name": "Fırtına Pençesi",
+     "seq": [
+      "quick",
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.35,
+      "undodgeable": true
+     }
+    },
+    {
+     "id": "kukreme",
+     "name": "Kükreme",
+     "seq": [
+      "quick",
+      "heavy",
+      "heavy"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "weaken": {
+       "atkMult": 0.8,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "ugallunun_gazabi",
+    "name": "Ugallu'nun Gazabı",
+    "effect": {
+     "critAtMax": true,
+     "perPointBonus": 0.05
+    }
+   },
+   "legacy": true,
+   "replacedBy": "ejder_ates"
+  },
+  "girtablullu": {
+   "name": "Girtablullu",
+   "role": "zehir",
+   "legendary": false,
+   "base": {
+    "hp": 100,
+    "atk": 15,
+    "def": 6,
+    "cev": 10,
+    "krit": 8,
+    "blok": 6
+   },
+   "growth": {
+    "hp": 19,
+    "atk": 3.4,
+    "def": 2,
+    "cev": 2,
+    "krit": 1.5,
+    "blok": 1.5
+   },
+   "passive": {
+    "id": "akrep_kabugu",
+    "name": "Akrep kabugu",
+    "effect": {
+     "flatBlok": 6
+    }
+   },
+   "chains": [
+    {
+     "id": "zehirli_igne",
+     "name": "Zehirli İğne",
+     "seq": [
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1,
+      "poison": {
+       "perTurnAtkMult": 0.5,
+       "turns": 3
+      }
+     }
+    },
+    {
+     "id": "akrep_kiskaci",
+     "name": "Akrep Kıskacı",
+     "seq": [
+      "heavy",
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "slow": {
+       "cevMult": 0.7,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "kuyruk_karsiligi",
+     "name": "Kuyruk Karşılığı",
+     "seq": [
+      "heavy",
+      "quick",
+      "quick"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 0.9,
+      "reflect": {
+       "value": 0.3,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "mashu_zehri",
+    "name": "Māšu Dağı'nın Zehri",
+    "effect": {
+     "poisonPerPoint": 0.15,
+     "poisonTurns": 3
+    }
+   },
+   "legacy": true,
+   "replacedBy": "ejder_zehir"
+  },
+  "kulullu": {
+   "name": "Kulullu",
+   "role": "iyilestirme",
+   "legendary": false,
+   "base": {
+    "hp": 110,
+    "atk": 13,
+    "def": 6,
+    "cev": 10,
+    "krit": 5,
+    "blok": 8
+   },
+   "growth": {
+    "hp": 18,
+    "atk": 4.7,
+    "def": 1.6,
+    "cev": 2,
+    "krit": 1,
+    "blok": 1.5
+   },
+   "passive": {
+    "id": "su_derisi",
+    "name": "Su derisi",
+    "effect": {
+     "regenMaxHpPerTurn": 0
+    }
+   },
+   "chains": [
+    {
+     "id": "apsunun_suyu",
+     "name": "Apsû'nun Suyu",
+     "seq": [
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 0.85,
+      "healMaxHp": 0.1
+     }
+    },
+    {
+     "id": "dalga",
+     "name": "Dalga",
+     "seq": [
+      "quick",
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "slow": {
+       "cevMult": 0.7,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "gelgit",
+     "name": "Gelgit",
+     "seq": [
+      "quick",
+      "heavy",
+      "heavy"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "healMaxHp": 0.06
+     }
+    }
+   ],
+   "finisher": {
+    "id": "ea_nin_lutfu",
+    "name": "Ea'nın Lütfu",
+    "effect": {
+     "healPerPoint": 0.04
+    }
+   },
+   "legacy": true,
+   "replacedBy": "ejder_su"
+  },
+  "kusarikku": {
+   "name": "Kusarikku",
+   "role": "savunma",
+   "legendary": false,
+   "base": {
+    "hp": 120,
+    "atk": 13,
+    "def": 10,
+    "cev": 6,
+    "krit": 5,
+    "blok": 12
+   },
+   "growth": {
+    "hp": 22,
+    "atk": 4.1,
+    "def": 2,
+    "cev": 1,
+    "krit": 1,
+    "blok": 1.7
+   },
+   "passive": {
+    "id": "boga_govdesi",
+    "name": "Boga govdesi",
+    "effect": {
+     "counterOnBlockAtkMult": 0.2
+    }
+   },
+   "chains": [
+    {
+     "id": "boynuz_hucumu",
+     "name": "Boynuz Hücumu",
+     "seq": [
+      "quick",
+      "heavy"
+     ],
+     "effect": {
+      "damageMult": 1.15,
+      "stunChance": 0.2
+     }
+    },
+    {
+     "id": "koruyucu_siper",
+     "name": "Koruyucu Siper",
+     "seq": [
+      "heavy",
+      "heavy",
+      "quick"
+     ],
+     "effect": {
+      "damageMult": 0.9,
+      "shield": {
+       "takenMult": 0.6,
+       "turns": 2
+      }
+     }
+    },
+    {
+     "id": "esik_bekcisi",
+     "name": "Eşik Bekçisi",
+     "seq": [
+      "heavy",
+      "quick",
+      "quick"
+     ],
+     "minGrade": "A",
+     "effect": {
+      "damageMult": 1.1,
+      "shield": {
+       "takenMult": 0.75,
+       "turns": 2
+      }
+     }
+    }
+   ],
+   "finisher": {
+    "id": "kapi_darbesi",
+    "name": "Kapı Bekçisinin Darbesi",
+    "effect": {
+     "shieldPerPoint": 0.06,
+     "shieldTurns": 2
+    }
+   },
+   "legacy": true,
+   "replacedBy": "ejder_tas"
+  }
+ },
+ "monsterTemplate": {
+  "base": {
+   "hp": 87,
+   "atk": 9.3,
+   "def": 3,
+   "cev": 8,
+   "krit": 5,
+   "blok": 4
+  },
+  "growth": {
+   "hp": 17.4,
+   "atk": 2.46,
+   "def": 1.5,
+   "cev": 2,
+   "krit": 1,
+   "blok": 1
+  }
+ },
+ "zones": [
+  {
+   "id": "kiyi",
+   "name": "Kiyi",
+   "levels": [
+    1,
+    4
+   ],
+   "lossOnDeath": 0,
+   "ozMult": 1,
+   "size": [
+    60,
+    60
+   ],
+   "monsterCount": 12,
+   "monsters": [
+    {
+     "id": "basmu",
+     "name": "Basmu",
+     "levels": [
+      1,
+      3
+     ],
+     "behavior": "sakin",
+     "mods": {
+      "hp": 0.9,
+      "atk": 1
+     },
+     "status": "zehir",
+     "eggOf": null,
+     "finisher": {
+      "id": "basmu_imza",
+      "name": "Boynuzlu Isırık"
+     }
+    },
+    {
+     "id": "kulullu_yabani",
+     "name": "Yabani Kulullu",
+     "levels": [
+      2,
+      4
+     ],
+     "behavior": "arada",
+     "mods": {
+      "hp": 1.1,
+      "atk": 0.9
+     },
+     "status": null,
+     "eggOf": "ejder_su",
+     "finisher": {
+      "id": "kulullu_yabani_imza",
+      "name": "Tuzlu Dalga"
+     }
+    }
+   ],
+   "guardian": {
+    "id": "lahmu",
+    "name": "Lahmu (bekci)",
+    "level": 5,
+    "mods": {
+     "hp": 2.693,
+     "atk": 1.397,
+     "def": 1.5
+    },
+    "respawnSeconds": 600,
+    "finisher": {
+     "id": "lahmu_imza",
+     "name": "Kıllı Kahramanın Darbesi",
+     "signature": true
+    }
+   },
+   "unlock": "baslangic"
+  },
+  {
+   "id": "bozkir",
+   "name": "Bozkir",
+   "levels": [
+    5,
+    9
+   ],
+   "lossOnDeath": 0.2,
+   "ozMult": 1.5,
+   "size": [
+    80,
+    80
+   ],
+   "monsterCount": 14,
+   "monsters": [
+    {
+     "id": "ugallu_yabani",
+     "name": "Yabani Ugallu",
+     "levels": [
+      5,
+      8
+     ],
+     "behavior": "saldirgan",
+     "mods": {
+      "hp": 1.01,
+      "atk": 1.15
+     },
+     "status": "kanama",
+     "eggOf": "ejder_ates",
+     "finisher": {
+      "id": "ugallu_yabani_imza",
+      "name": "Fırtına Kükremesi"
+     }
+    },
+    {
+     "id": "kusarikku_yabani",
+     "name": "Yabani Kusarikku",
+     "levels": [
+      6,
+      9
+     ],
+     "behavior": "sakin",
+     "mods": {
+      "hp": 1.3,
+      "atk": 0.85,
+      "def": 1.4
+     },
+     "status": null,
+     "eggOf": "ejder_tas",
+     "finisher": {
+      "id": "kusarikku_yabani_imza",
+      "name": "Boğa Hamlesi"
+     }
+    },
+    {
+     "id": "uridimmu",
+     "name": "Uridimmu",
+     "levels": [
+      7,
+      9
+     ],
+     "behavior": "arada",
+     "mods": {
+      "hp": 1,
+      "atk": 1.1
+     },
+     "status": "kanama",
+     "eggOf": null,
+     "finisher": {
+      "id": "uridimmu_imza",
+      "name": "Kudurmuş Pençe"
+     },
+     "rare": true
+    }
+   ],
+   "guardian": {
+    "id": "anzu",
+    "name": "Anzu (bekci)",
+    "level": 9,
+    "mods": {
+     "hp": 2.732,
+     "atk": 1.904,
+     "cev": 1.5
+    },
+    "respawnSeconds": 900,
+    "finisher": {
+     "id": "anzu_imza",
+     "name": "Kader Tableti Çığlığı",
+     "signature": true
+    }
+   },
+   "unlock": "lahmu ilk kez yenilince"
+  },
+  {
+   "id": "derin",
+   "name": "Derin Edin",
+   "levels": [
+    10,
+    13
+   ],
+   "lossOnDeath": 0.4,
+   "ozMult": 2.2,
+   "size": [
+    80,
+    80
+   ],
+   "monsterCount": 12,
+   "monsters": [
+    {
+     "id": "girtablullu_yabani",
+     "name": "Yabani Girtablullu",
+     "levels": [
+      10,
+      12
+     ],
+     "behavior": "arada",
+     "mods": {
+      "hp": 1,
+      "atk": 1
+     },
+     "status": "zehir",
+     "eggOf": "ejder_zehir",
+     "finisher": {
+      "id": "girtablullu_yabani_imza",
+      "name": "Akrep Kuyruğu"
+     }
+    },
+    {
+     "id": "mushussu",
+     "name": "Mushussu",
+     "levels": [
+      11,
+      13
+     ],
+     "behavior": "saldirgan",
+     "mods": {
+      "hp": 1.1,
+      "atk": 1.15
+     },
+     "status": "yanik",
+     "eggOf": null,
+     "finisher": {
+      "id": "mushussu_imza",
+      "name": "Ejder Nefesi"
+     },
+     "rare": true
+    }
+   ],
+   "guardian": {
+    "id": "usumgallu",
+    "name": "Usumgallu (bekci)",
+    "level": 13,
+    "mods": {
+     "hp": 2.829,
+     "atk": 1.943,
+     "def": 1.5
+    },
+    "respawnSeconds": 1200,
+    "finisher": {
+     "id": "usumgallu_imza",
+     "name": "Büyük Ejderin Ezişi",
+     "signature": true
+    }
+   },
+   "unlock": "anzu ilk kez yenilince"
+  }
+ ],
+ "behaviors": {
+  "sakin": {
+   "aggroRadius": 0,
+   "aggroChance": 0
+  },
+  "arada": {
+   "aggroRadius": 3,
+   "aggroChance": 0.5
+  },
+  "saldirgan": {
+   "aggroRadius": 6,
+   "aggroChance": 1
+  }
+ },
+ "statusEffects": {
+  "zehir_yetenek": {
+   "turns": 3,
+   "perTurn": "0.40 * kaynakAtk, savunmayi yok sayar"
+  },
+  "canavar_etkisi": {
+   "chance": 0.25,
+   "turns": 2,
+   "perTurn": "0.30 * canavarAtk",
+   "types": [
+    "zehir",
+    "kanama",
+    "yanik"
+   ]
+  },
+  "sersem": {
+   "turns": 1,
+   "effect": "sira kaybeder"
+  },
+  "yavas": {
+   "turns": 2,
+   "effect": "cev x0.7"
+  },
+  "zayif": {
+   "turns": 2,
+   "effect": "atk x0.8"
+  },
+  "stack": false,
+  "note": "Ayni etki ust uste binmez; yenisi sureyi yeniler"
+ },
+ "items": {
+  "can_iksiri": {
+   "name": "Can iksiri",
+   "heal": "0.35 * maxHp",
+   "price": 30,
+   "pocketStack": 1
+  },
+  "bandaj": {
+   "name": "Bandaj",
+   "heal": "0.10 * maxHp her tur, 3 tur; kanamayi siler",
+   "price": 15,
+   "pocketStack": 3
+  },
+  "panzehir": {
+   "name": "Panzehir",
+   "heal": "0.10 * maxHp; zehir ve yanigi siler",
+   "price": 20,
+   "pocketStack": 2
+  },
+  "donus_tableti": {
+   "name": "Donus tableti",
+   "effect": "Savas disinda aninda kapiya don",
+   "price": 60,
+   "pocketStack": 1,
+   "beltAllowed": false
+  }
+ },
+ "drops": {
+  "itemDropChance": {
+   "bandaj": 0.08,
+   "panzehir": 0.05,
+   "can_iksiri": 0.03
+  },
+  "eggDropChanceOwnType": 0,
+  "guardianEggChance": 0,
+  "guardianSekel": [
+   80,
+   200,
+   450
+  ],
+  "firstGuardianKillEggGuaranteed": false,
+  "_v41": "v4.1: yumurta düşmesi kaldırıldı; yerine soulCores.drops. Eski yumurtalar (legacy) kuluçkada çatlayınca açılış sonucu olur."
+ },
+ "start": {
+  "creatureChoice": [
+   "ejder_ates",
+   "ejder_su",
+   "ejder_zehir",
+   "ejder_tas"
+  ],
+  "grade": "C",
+  "sekel": 80,
+  "belt": {
+   "can_iksiri": 1,
+   "bandaj": 3
+  }
+ },
+ "ai": {
+  "guardianRageBelowHp": 0.5,
+  "guardianRageAtkMult": 1.2,
+  "tutorialFirstFightMonsterAtkMult": 0.5
+ },
+ "performance": {
+  "fps": 30,
+  "maxTriangles": 60000,
+  "creatureTris": 3000,
+  "monsterTris": 2000,
+  "guardianTris": 4000,
+  "maxDrawCalls": 80,
+  "maxTexture": 512,
+  "maxPixelRatio": 1.5,
+  "maxBuildMB": 15
+ },
+ "directorDecisions": {
+  "date": "2026-11-18",
+  "approved": {
+   "hizliSavas": "Savas ekraninda 'Ayni secimlerle devam et' dugmesi: son saldiri/koruma bolgesi ve eylem tekrar edilir; oyuncu istedigi an durdurur.",
+   "kaderPuani": "Yumurta dusmeyen her bekci zaferi +1 kader puani; 10 puanda bir sonraki bekci zaferi A veya S yumurta garanti (A %80, S %20), puan sifirlanir.",
+   "testHizi": "Ayarlarda gizli 'oz x5' anahtari; sadece ?test=1 adresiyle gorunur."
+  },
+  "deferred": [
+   "oz sigortasi",
+   "tur ustunlugu ucgeni (4 rol secildi)",
+   "miras",
+   "ana us",
+   "ozu para olarak harcamak",
+   "gunluk gorevler",
+   "canavar surusu"
+  ],
+  "adultLevelMeaning": "Sadece gorunus degisir; yaratik her seviyede her tur saldirabilir.",
+  "balanceTodo": "Yeni carpanlarla Kusarikku S vs C hala ~%99; test sorumlusu Kusarikku'yu (savunma/blok/iyilesme) hedef %75-91 araligina ceksin."
+ },
+ "combat2": {
+  "moves": {
+   "quick": {
+    "name": "Hızlı vuruş",
+    "mult": 0.8,
+    "dodgeMult": 0.5,
+    "dodgeAdd": 0,
+    "points": 1
+   },
+   "heavy": {
+    "name": "Ağır vuruş",
+    "mult": 1.35,
+    "dodgeMult": 1,
+    "dodgeAdd": 0.12,
+    "points": 1
+   },
+   "guard": {
+    "name": "Savunma",
+    "takenMult": 0.5,
+    "points": 0
+   },
+   "finisher": {
+    "name": "Bitirici",
+    "minPoints": 1,
+    "undodgeable": true
+   }
+  },
+  "maxPoints": 5,
+  "finisherBase": 0.7,
+  "finisherPerPoint": 0.4,
+  "chainBonusMult": 1.3,
+  "chainExtraPoints": 0,
+  "dodgeHardCap": 0.5,
+  "telegraphChance": 0.25,
+  "telegraphChanceTutorial": 0.5,
+  "counter": {
+   "takenMult": 0.3,
+   "strikeMult": 0.7,
+   "points": 1,
+   "stunChance": 0.15
+  },
+  "enemy": {
+   "finisherAt": {
+    "monster": 4,
+    "guardian": 5,
+    "creature": 5
+   },
+   "finisherBase": 1,
+   "finisherPerPoint": 0.25
+  },
+  "note": "Bolge secimi v2'de kaldirildi. FFXIV zincir + WoW kombo puani + Blade&Soul telgraf/karsi saldiri.",
+  "telegraphChanceGuardian": 0.12
+ },
+ "legacyMap": {
+  "creatures": {
+   "ugallu": "ejder_ates",
+   "kulullu": "ejder_su",
+   "girtablullu": "ejder_zehir",
+   "kusarikku": "ejder_tas"
+  },
+  "_not": "v1 kayıtlarındaki oynanabilir yaratık id -> v2 ejderha id. Kayıt geçişi bu tabloyu kullanır."
+ },
+ "absorbFx": {
+  "durations": {
+   "normal": 1.0,
+   "rare": 2.0,
+   "guardian": 3.5
+  },
+  "speedOptions": [
+   1,
+   2,
+   4
+  ],
+  "defaultSpeed": 1,
+  "rareRule": "Canavar tipinde rare:true olanlar nadirdir (Uridimmu, Mušḫuššu). Bekçi her zaman 'guardian'.",
+  "reducedFxMult": 0.5,
+  "_not": "Sadece görsel süre. Öz ödülü finishFight içinde bir kez verilir; animasyon atlanır/kesilirse ödül değişmez."
+ },
+ "collection": {
+  "_not": "Mitolojik yaratık koleksiyonu için ince veri (gelecek sürüm). Henüz modül yok.",
+  "entries": [
+   {
+    "id": "ugallu",
+    "name": "Ugallu",
+    "kind": "legacy",
+    "source": "Tiamat'ın 11 canavarı",
+    "wild": "ugallu_yabani"
+   },
+   {
+    "id": "girtablullu",
+    "name": "Girtablullu",
+    "kind": "legacy",
+    "source": "Tiamat'ın 11 canavarı",
+    "wild": "girtablullu_yabani"
+   },
+   {
+    "id": "kulullu",
+    "name": "Kulullu",
+    "kind": "legacy",
+    "source": "Tiamat'ın 11 canavarı",
+    "wild": "kulullu_yabani"
+   },
+   {
+    "id": "kusarikku",
+    "name": "Kusarikku",
+    "kind": "legacy",
+    "source": "Tiamat'ın 11 canavarı",
+    "wild": "kusarikku_yabani"
+   },
+   {
+    "id": "basmu",
+    "name": "Bašmu",
+    "kind": "monster"
+   },
+   {
+    "id": "uridimmu",
+    "name": "Uridimmu",
+    "kind": "monster"
+   },
+   {
+    "id": "mushussu",
+    "name": "Mušḫuššu",
+    "kind": "monster"
+   },
+   {
+    "id": "lahmu",
+    "name": "Laḫmu",
+    "kind": "guardian"
+   },
+   {
+    "id": "anzu",
+    "name": "Anzû",
+    "kind": "guardian"
+   },
+   {
+    "id": "usumgallu",
+    "name": "Ušumgallu",
+    "kind": "guardian"
+   }
+  ]
+ },
+ "inventory": {
+  "_not": "v4 şema. Eşyalar (bag) eskisi gibi; yemek ve kaynaklar ayrı torbalarda. Tur 3 dolduracak.",
+  "foodSlots": 6,
+  "foodStack": 10,
+  "resourceSlots": 8,
+  "resourceStack": 20
+ },
+ "resources": {
+  "_not": "v4 Tur 3: haritada toplanabilir kaynaklar. respawnSeconds oyun saatiyle. yield = bir toplamada verilen adet.",
+  "gatherSeconds": 1.2,
+  "gatherRadius": 1.8,
+  "types": {
+   "cig_et": {
+    "name": "Çiğ et",
+    "respawnSeconds": 240,
+    "yield": 1
+   },
+   "sifali_ot": {
+    "name": "Şifalı ot",
+    "respawnSeconds": 180,
+    "yield": 1
+   },
+   "sifali_meyve": {
+    "name": "Şifalı meyve",
+    "respawnSeconds": 200,
+    "yield": 1,
+    "edible": {
+     "heal": 0.15
+    }
+   },
+   "ruh_mantari": {
+    "name": "Ruh mantarı",
+    "respawnSeconds": 420,
+    "yield": 1
+   }
+  },
+  "perZone": {
+   "kiyi": {
+    "cig_et": 3,
+    "sifali_ot": 4,
+    "sifali_meyve": 3,
+    "ruh_mantari": 1
+   },
+   "bozkir": {
+    "cig_et": 3,
+    "sifali_ot": 2,
+    "sifali_meyve": 1,
+    "ruh_mantari": 1
+   },
+   "derin": {
+    "cig_et": 1,
+    "sifali_ot": 1,
+    "ruh_mantari": 3
+   }
+  },
+  "nodes": {
+   "kiyi": [
+    {
+     "type": "cig_et",
+     "x": 19.1,
+     "z": 21.7
+    },
+    {
+     "type": "cig_et",
+     "x": 35.4,
+     "z": 17.2
+    },
+    {
+     "type": "cig_et",
+     "x": 18.8,
+     "z": 6.5
+    },
+    {
+     "type": "sifali_ot",
+     "x": 43.0,
+     "z": 42.8
+    },
+    {
+     "type": "sifali_ot",
+     "x": 12.0,
+     "z": 44.5
+    },
+    {
+     "type": "sifali_ot",
+     "x": 34.8,
+     "z": 32.1
+    },
+    {
+     "type": "sifali_ot",
+     "x": 33.0,
+     "z": 6.5
+    },
+    {
+     "type": "sifali_meyve",
+     "x": 14.2,
+     "z": 38.7
+    },
+    {
+     "type": "sifali_meyve",
+     "x": 31.9,
+     "z": 39.3
+    },
+    {
+     "type": "sifali_meyve",
+     "x": 24.4,
+     "z": 48.7
+    },
+    {
+     "type": "ruh_mantari",
+     "x": 15.3,
+     "z": 16.5
+    }
+   ],
+   "bozkir": [
+    {
+     "type": "cig_et",
+     "x": 58.2,
+     "z": 37.1
+    },
+    {
+     "type": "cig_et",
+     "x": 38.9,
+     "z": 70.8
+    },
+    {
+     "type": "cig_et",
+     "x": 61.6,
+     "z": 12.5
+    },
+    {
+     "type": "sifali_ot",
+     "x": 39.1,
+     "z": 62.5
+    },
+    {
+     "type": "sifali_ot",
+     "x": 46.4,
+     "z": 56.6
+    },
+    {
+     "type": "sifali_meyve",
+     "x": 46.7,
+     "z": 73.8
+    },
+    {
+     "type": "ruh_mantari",
+     "x": 35.5,
+     "z": 50.0
+    }
+   ],
+   "derin": [
+    {
+     "type": "cig_et",
+     "x": 30.5,
+     "z": 34.0
+    },
+    {
+     "type": "sifali_ot",
+     "x": 20.5,
+     "z": 22.4
+    },
+    {
+     "type": "ruh_mantari",
+     "x": 10.3,
+     "z": 56.9
+    },
+    {
+     "type": "ruh_mantari",
+     "x": 40.9,
+     "z": 33.9
+    },
+    {
+     "type": "ruh_mantari",
+     "x": 42.3,
+     "z": 54.4
+    }
+   ]
+  }
+ },
+ "recipes": {
+  "_not": "v4 Tur 3: kamp ateşinde pişirme. heal = maxHp oranı. buff: sonraki N savaşta saldırı çarpanı.",
+  "cookSeconds": 1.0,
+  "eatSeconds": 1.5,
+  "list": {
+   "pismis_et": {
+    "name": "Pişmiş et",
+    "needs": {
+     "cig_et": 2
+    },
+    "heal": 0.3
+   },
+   "sifali_yahni": {
+    "name": "Şifalı yahni",
+    "needs": {
+     "cig_et": 1,
+     "sifali_ot": 2
+    },
+    "heal": 0.4
+   },
+   "ruhlu_et": {
+    "name": "Ruhlu et",
+    "needs": {
+     "cig_et": 2,
+     "ruh_mantari": 1
+    },
+    "heal": 0.25,
+    "buff": {
+     "atk": 0.1,
+     "fights": 2
+    }
+   }
+  }
+ },
+ "camps": {
+  "_not": "v4 Tur 3: bölge başına bir kamp ateşi. safeRadius içinde canavar doğmaz/girmez/saldırmaz. Kamp öz güvenceye ALMAZ.",
+  "safeRadius": 5,
+  "useRadius": 3,
+  "cooksPerRunPerCamp": 4,
+  "byZone": {
+   "kiyi": {
+    "x": 42,
+    "z": 10
+   },
+   "bozkir": {
+    "x": 46,
+    "z": 16
+   },
+   "derin": {
+    "x": 42,
+    "z": 66
+   }
+  }
+ },
+ "soulCores": {
+  "_not": "v4.1 Ruh Çekirdeği: yeni oynanabilir karakter kazanma. Bütün olasılıklar 0..1. Plan: PLAN-v4.1-cekirdek.md (13. bölüm esas).",
+  "order": [
+   "kil",
+   "lacivert",
+   "altin",
+   "kader"
+  ],
+  "types": {
+   "kil": {
+    "name": "Kil Çekirdek",
+    "color": "#9a8468",
+    "grades": {
+     "C": 0.7,
+     "B": 0.25,
+     "A": 0.045,
+     "S": 0.005
+    }
+   },
+   "lacivert": {
+    "name": "Lacivert Çekirdek",
+    "color": "#2b4fa8",
+    "grades": {
+     "C": 0.5,
+     "B": 0.35,
+     "A": 0.12,
+     "S": 0.03
+    }
+   },
+   "altin": {
+    "name": "Altın Çekirdek",
+    "color": "#e0b040",
+    "grades": {
+     "C": 0.3,
+     "B": 0.45,
+     "A": 0.2,
+     "S": 0.05
+    }
+   },
+   "kader": {
+    "name": "Kader Çekirdeği",
+    "color": "#9a2a6a",
+    "grades": {
+     "B": 0.5,
+     "A": 0.38,
+     "S": 0.12
+    }
+   }
+  },
+  "dragonPool": [
+   "ejder_ates",
+   "ejder_su",
+   "ejder_zehir",
+   "ejder_tas"
+  ],
+  "mythicPool": [
+   "ugallu",
+   "girtablullu",
+   "kulullu",
+   "kusarikku"
+  ],
+  "mythicGrades": {
+   "B": 0.5,
+   "A": 0.35,
+   "S": 0.15
+  },
+  "mythicCandidates": {
+   "A": {
+    "rates": {
+     "kil": 0,
+     "lacivert": 0.005,
+     "altin": 0.015,
+     "kader": 0.04
+    },
+    "pitySoftStart": 40,
+    "pityStep": 0.005,
+    "pityHard": 80
+   },
+   "B": {
+    "rates": {
+     "kil": 0,
+     "lacivert": 0.0025,
+     "altin": 0.01,
+     "kader": 0.03
+    },
+    "pitySoftStart": 60,
+    "pityStep": 0.0025,
+    "pityHard": 120
+   }
+  },
+  "mythicActive": "A",
+  "mythicMinLevel": 8,
+  "_mythicNot": "Merhamet sayacı yalnız mitolojik oranı >0 olan türlerin (lacivert/altin/kader) açılışlarında ve aktif karakter seviyesi >= mythicMinLevel iken ilerler. Hard değerine ulaşan açılış mitolojik garantidir.",
+  "tenPull": {
+   "count": 10,
+   "minGrade": "B"
+  },
+  "drops": {
+   "rareChance": {
+    "kiyi": 0.45,
+    "bozkir": 0.45,
+    "derin": 0.2
+   },
+   "rareType": {
+    "kiyi": "kil",
+    "bozkir": "kil",
+    "derin": "lacivert"
+   },
+   "guardians": {
+    "lahmu": {
+     "first": [
+      [
+       "kil",
+       1
+      ]
+     ],
+     "always": [
+      [
+       "kil",
+       1
+      ]
+     ],
+     "chance": [
+      [
+       "lacivert",
+       0.2
+      ]
+     ]
+    },
+    "anzu": {
+     "first": [
+      [
+       "altin",
+       2
+      ]
+     ],
+     "always": [
+      [
+       "altin",
+       1
+      ],
+      [
+       "lacivert",
+       1
+      ]
+     ],
+     "chance": [
+      [
+       "altin",
+       0.5
+      ],
+      [
+       "kader",
+       0.15
+      ]
+     ]
+    },
+    "usumgallu": {
+     "first": [
+      [
+       "kader",
+       1
+      ]
+     ],
+     "always": [
+      [
+       "altin",
+       1
+      ]
+     ],
+     "chance": [
+      [
+       "kader",
+       0.15
+      ]
+     ]
+    }
+   },
+   "_not": "first: yalnız ilk zaferde (always yerine). always: sonraki her zaferde. chance: her zaferde (ilk dahil) ek olasılık."
+  },
+  "feedOz": {
+   "C": 15,
+   "B": 30,
+   "A": 60,
+   "S": 120,
+   "mythic": 250
+  },
+  "bag": {
+   "start": 20,
+   "upgrades": [
+    {
+     "cap": 30,
+     "price": 300
+    },
+    {
+     "cap": 40,
+     "price": 700
+    },
+    {
+     "cap": 50,
+     "price": 1500
+    }
+   ]
+  },
+  "depotCap": 300,
+  "autoDepositDefault": true,
+  "groundSeconds": 30,
+  "pickupRadius": 1.8,
+  "deathLoss": {
+   "kiyi": 0,
+   "bozkir": 0.2,
+   "derin": 0.4
+  },
+  "rosterMax": 2,
+  "newCharStart": {
+   "mode": "percentOfMax",
+   "percent": 0.7,
+   "catchUpBonus": 0.5,
+   "_not": "mode: 'level1' (seviye 1 + catchUpBonus ile kadrodaki en yüksek seviyeye kadar fazla öz) ya da 'percentOfMax' (kadrodaki en yüksek seviyenin percent'i, aşağı yuvarlanır, en az 1; öz 0). Simülasyonla seçilir."
+  },
+  "kaderMuhru": {
+   "pointsPer": 10,
+   "grades": {
+    "A": 0.8,
+    "S": 0.2
+   },
+   "pityPerLeftoverPoint": 2
+  },
+  "opLogSize": 50
+ }
+}

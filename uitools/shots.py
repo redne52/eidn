@@ -1,0 +1,60 @@
+import asyncio, sys, json
+from playwright.async_api import async_playwright
+CARD = int(__import__('os').environ.get('CARD','0'))
+URL = 'file:///home/claude/edin/game/dist/index.html'
+OUT = '/home/claude/edin/shots/'
+async def main(w=800, h=360, tag='800'):
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'])
+        ctx = await b.new_context(viewport={'width': w, 'height': h}, has_touch=True, device_scale_factor=1)
+        pg = await ctx.new_page()
+        errs = []
+        pg.on('console', lambda m: m.type in ('error','warning') and errs.append(m.text))
+        pg.on('pageerror', lambda e: errs.append('PAGEERR ' + str(e)))
+        await pg.goto(URL + '?test=1'); await pg.wait_for_timeout(1500)
+        async def shot(n): await pg.screenshot(path=f'{OUT}{tag}_{n}.png')
+        await shot('01_title')
+        await pg.click('text=Başla'); await pg.wait_for_timeout(600)
+        await pg.click('.story'); await pg.wait_for_timeout(1200)
+        await pg.click(f'.card >> nth={CARD}'); await pg.wait_for_timeout(500)
+        await shot('02_eggs')
+        await pg.click('text=Kan bağı kur'); await pg.wait_for_timeout(2600)
+        await shot('03_hatch')
+        await pg.wait_for_selector('text=Devam', timeout=8000); await pg.wait_for_timeout(400)
+        await shot('04_banner')
+        await pg.click('text=Devam'); await pg.wait_for_timeout(1500)
+        await shot('05_world')
+        # basmu'ya yürü
+        await pg.evaluate("(()=>{const g=window.__edin.game;const m=g.monsters[0];g.pos.x=m.x;g.pos.z=m.z+1.5;})()")
+        await pg.wait_for_timeout(700)
+        await shot('06_world_near')
+        await pg.click('.attack', force=True); await pg.wait_for_timeout(1400)
+        await shot('07_battle')
+        await pg.click('.atk .zbtn >> nth=0'); await pg.click('.grd .zbtn >> nth=1'); await pg.wait_for_timeout(200)
+        await shot('08_battle_sel')
+        await pg.click('.confirm', force=True); await pg.wait_for_timeout(700)
+        await shot('09_battle_hit')
+        for i in range(20):
+            if await pg.locator('.result').count(): break
+            await pg.wait_for_timeout(1500)
+            await pg.evaluate("document.querySelector('.confirm.ready')?.click()")
+        await pg.wait_for_timeout(1500)
+        await shot('10_result')
+        await pg.click('.rbox .btn'); await pg.wait_for_timeout(800)
+        await pg.click('.br .ret'); await pg.wait_for_timeout(11500)
+        await shot('11_arrive')
+        await pg.click('.rbox .btn'); await pg.wait_for_timeout(1200)
+        await shot('12_gate')
+        await pg.click("text=Edin'e gir"); await pg.wait_for_timeout(500); await shot('13_zones'); await pg.click('.close')
+        await pg.click('text=Yaratık'); await pg.wait_for_timeout(400); await shot('14_creature'); await pg.click('.close')
+        await pg.click('text=Dükkân'); await pg.wait_for_timeout(400); await shot('15_shop'); await pg.click('.close'); await pg.wait_for_timeout(600)
+        await pg.click('text=Çanta'); await pg.wait_for_timeout(400); await shot('16_bag'); await pg.click('.close'); await pg.wait_for_timeout(600)
+        # boss savaşı test
+        await pg.evaluate("(()=>{const e=window.__edin;e.game.creature.level=6;e.enterZone('kiyi');})()"); await pg.wait_for_timeout(1000)
+        await pg.evaluate("(()=>{const g=window.__edin.game;const m=g.monsters.find(x=>x.guardian);g.pos.x=m.x;g.pos.z=m.z+2;})()"); await pg.wait_for_timeout(800)
+        await shot('17_boss_world')
+        await pg.click('.attack', force=True); await pg.wait_for_timeout(1400); await shot('18_boss_battle')
+        print(json.dumps(errs[:20], ensure_ascii=False))
+        await b.close()
+w,h,t = (int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]) if len(sys.argv)>3 else (800,360,'800')
+asyncio.run(main(w,h,t))
