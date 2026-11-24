@@ -427,7 +427,11 @@ async function fight() {
 
 // kapıda / ölüm ekranında da oyun saati işlesin (yara süresi, bekçi yeniden doğma)
 stage.listeners.push((dt) => { if (game && game.screen !== 'world' && game.screen !== 'battle') game.tick(dt); });
-title();
+// Gömülü ejderha modelleri çözülmeden oyun başlamasın (yavaş telefonda kod modeline düşmesin); en çok 12 sn bekle.
+{ const ld = document.createElement('div'); ld.className = 'loadingNote';
+  ld.style.cssText = 'position:absolute;inset:auto 0 18px 0;text-align:center;color:#f3e2b5;font:600 15px system-ui;text-shadow:0 1px 3px #000;pointer-events:none';
+  ld.textContent = 'Ejderhalar uyanıyor…'; ui.appendChild(ld);
+  Promise.race([glbReady, new Promise((r) => setTimeout(r, 12000))]).then(() => { ld.remove(); title(); }); }
 window.__edin = { glbReady, get game() { return game; }, opts, openFlow, decideFlow, muhurFlow, openCorePanel, get coreBusy() { return coreBusy; }, get view() { return stage.view; }, core, enterZone, hub, fight, shot: presentShot, cam: camState, perf: () => import('./ui/stage.js').then((m) => m.perfInfo()) };
 
 // ---------- ?shot=gate|kiyi|bozkir|derin [&cam=play] : sunum kamerası (oyunda kullanılmaz) ----------

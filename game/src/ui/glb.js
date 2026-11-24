@@ -5,6 +5,24 @@
 // LOD: registerGlb'ye tek adres ya da grafik ayarına göre { 0: düşük, 1: orta, 2: yüksek } verilebilir.
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { TextureLoader } from 'three';
+
+// Yayınlanan sayfanın güvenlik politikası (CSP) fetch ile data:/blob: adreslerine bağlanmayı engelleyebilir.
+// Bu yüzden gömülü GLB'ler fetch'siz çözülür: base64 → ArrayBuffer → parse; dokular da <img> ile
+// (TextureLoader) yüklenir, ImageBitmapLoader'ın fetch'i kullanılmaz.
+function dataUrlToBuffer(url) {
+  const i = url.indexOf(',');
+  const bin = atob(url.slice(i + 1));
+  const out = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) out[k] = bin.charCodeAt(k);
+  return out.buffer;
+}
+function noFetchTextures(loader) {
+  if (loader && typeof loader.register === 'function') {
+    loader.register((parser) => { parser.textureLoader = new TextureLoader(parser.options.manager); return { name: 'EDIN_img_textures' }; });
+  }
+  return loader;
+}
 
 const reg = new Map(); // "id|stage" → { lods, files, height, scale, rotY, opts }
 const files = new Map(); // url → { status, gltf, promise, error }
@@ -39,7 +57,11 @@ function loadUrl(url) {
   if (f.status === 'ok') return Promise.resolve(true); if (f.status === 'fail') return Promise.resolve(false);
   if (!f.promise) {
     f.status = 'loading';
-    f.promise = Promise.resolve().then(() => makeLoader().loadAsync(url))
+    f.promise = Promise.resolve().then(() => {
+      const loader = noFetchTextures(makeLoader());
+      if (typeof url === 'string' && url.startsWith('data:') && typeof loader.parseAsync === 'function') return loader.parseAsync(dataUrlToBuffer(url), '');
+      return loader.loadAsync(url);
+    })
       .then((gltf) => { f.gltf = gltf; f.status = 'ok'; return true; })
       .catch((err) => { f.status = 'fail'; f.error = String(err && err.message || err); if (typeof console !== 'undefined') console.warn('[Edin] GLB yüklenemedi, kod modeli kullanılacak:', String(url).slice(0, 60), f.error); return false; });
   }
