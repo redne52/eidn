@@ -1,0 +1,19 @@
+{
+  "_not": "Ates Ejderhasi (Tripo, iskeletli) kemik haritasi. Adlar three.js GLTFLoader'in temizledigi adlardir ('tripo::Root' -> 'tripoRoot'). Eksenler GLB sahnesinin kendi (dugum) uzayindadir: model bu uzayda -X'e bakar; assets.json'daki rotY=+pi/2 onu oyunun +Z yonune cevirir. Siniflandirma: kemiklerin bind konumlari (inverseBindMatrices) + agirlikli verteks merkezleri + renkli kure gorseli (shots/glb/kemik_haritasi.png). Sol = ejderhanin solu.",
+  "frame": { "forward": [-1, 0, 0], "left": [0, 0, 1], "up": [0, 1, 0] },
+  "root": "tripoRoot",
+  "spine": ["tripoSpine_0", "tripoSpine_1", "tripoSpine_2"],
+  "chest": "tripoSpine_2",
+  "spineUpper": ["tripoSpine_3", "tripoSpine_4"],
+  "neck": ["tripoHead_0", "tripoHead_1", "tripoHead_2"],
+  "head": "tripoHead_3",
+  "skull": "tripoHead_4",
+  "jaw": "tripoHead_5",
+  "jawTip": "tripoHead_7",
+  "wingL": { "clavicle": "bone_12", "upper": "bone_13", "fore": "bone_14", "hand": "bone_15", "fingers": [["bone_16", "bone_17", "bone_18"], ["bone_19", "bone_20", "bone_21"], ["bone_22", "bone_23", "bone_24"], ["bone_25", "bone_26", "bone_27"]] },
+  "wingR": { "upper": "bone_30", "hand": "bone_31", "fingers": [["bone_32", "bone_33"], ["bone_34", "bone_35", "bone_36"], ["bone_37", "bone_38", "bone_39"], ["bone_40", "bone_41", "bone_42"]] },
+  "legL": { "hip": "bone_45", "knee": "bone_46", "ankle": "bone_47", "foot": "bone_48", "toes": ["bone_49", "bone_51", "bone_53"] },
+  "legR": { "hip": "bone_55", "knee": "bone_56", "ankle": "bone_57", "foot": "bone_58", "toes": ["bone_59", "bone_61", "bone_63"] },
+  "tail": ["bone_65", "tripoTail_0", "tripoTail_1", "tripoTail_2", "tripoTail_3", "tripoTail_4", "tripoTail_5", "tripoTail_6", "tripoTail_7", "tripoTail_8", "tripoTail_9", "bone_76", "bone_77"],
+  "misc": ["bone_43", "bone_44"]
+}

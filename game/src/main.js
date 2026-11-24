@@ -11,6 +11,7 @@ import * as CS from './ui/coreScreens.js';
 import { coreScene } from './ui/coreFx.js';
 import { createSpiritFeed } from './ui/spiritFeed.js';
 import { PULL_COLOR, pullKey } from './ui/crystal.js';
+import { initGlbs, glbQualityChanged } from './ui/glbFiles.js';
 
 const app = document.getElementById('app');
 const ui = S.el('div', ''); ui.id = 'ui';
@@ -26,12 +27,14 @@ const saveOpts = () => { try { localStorage.setItem('edin.opts', JSON.stringify(
 // ?gfx=0|1|2 adresi ayarı geçersiz kılar (test için)
 { const m = /[?&]gfx=(\d)/.exec(location.search); if (m) opts.gfx = +m[1]; else if (opts.lowq && opts.gfx === undefined) opts.gfx = 0; }
 setQuality(Math.max(0, Math.min(2, opts.gfx ?? 1)));
+// GLB modelleri (ör. Ateş Ejderhası): seçili grafik ayarının LOD'u arka planda yüklenir; hazır olana kadar ya da hata olursa kod modeli kullanılır.
+const glbReady = initGlbs(stage.quality).catch(() => []);
 // Otomatik grafik düşürme: telefon yavaşsa (5 sn ortalama < 24 FPS) bir kademe düşür. Oyuncu ayarı elle seçtiyse dokunma.
 { let acc = 0, frames = 0, last = performance.now(), drops = 0;
   stage.listeners.push(() => {
     const now = performance.now(); acc += now - last; last = now; frames++;
     if (acc >= 5000) { const fps = frames * 1000 / acc; acc = 0; frames = 0;
-      if (fps < 24 && !opts.gfxManual && (opts.gfx ?? 1) > 0 && drops < 2 && !/[?&]gfx=/.test(location.search)) { opts.gfx = (opts.gfx ?? 1) - 1; drops++; saveOpts(); setQuality(opts.gfx); console.log('Grafik otomatik düşürüldü:', opts.gfx, Math.round(fps) + ' FPS'); } }
+      if (fps < 24 && !opts.gfxManual && (opts.gfx ?? 1) > 0 && drops < 2 && !/[?&]gfx=/.test(location.search)) { opts.gfx = (opts.gfx ?? 1) - 1; drops++; saveOpts(); setQuality(opts.gfx); glbQualityChanged(opts.gfx); console.log('Grafik otomatik düşürüldü:', opts.gfx, Math.round(fps) + ' FPS'); } }
   }); }
 setReducedFx(!!opts.reducedFx || /[?&]rfx=1/.test(location.search));
 camState.auto = opts.camAuto !== false;
@@ -137,7 +140,7 @@ function hub() {
     onBag: () => (S.bagPanel(ui, game, save, () => decideFlow(null).then(hub)).onclose = hub),
     onShop: () => (S.shopPanel(ui, game, save).onclose = hub),
     onSettings: () => S.settingsPanel(ui, {
-      test: TEST, get: (k) => opts[k], set: (k, v) => { opts[k] = v; if (k === 'gfx') opts.gfxManual = true; saveOpts(); if (k === 'gfx') setQuality(v); if (k === 'reducedFx') setReducedFx(v); if (k === 'camAuto') camState.auto = !!v; applyTest(); },
+      test: TEST, get: (k) => opts[k], set: (k, v) => { opts[k] = v; if (k === 'gfx') opts.gfxManual = true; saveOpts(); if (k === 'gfx') { setQuality(v); glbQualityChanged(v); } if (k === 'reducedFx') setReducedFx(v); if (k === 'camAuto') camState.auto = !!v; applyTest(); },
       reset: () => { core.clearSave(); location.reload(); },
     }),
   });
@@ -424,8 +427,12 @@ async function fight() {
 
 // kapıda / ölüm ekranında da oyun saati işlesin (yara süresi, bekçi yeniden doğma)
 stage.listeners.push((dt) => { if (game && game.screen !== 'world' && game.screen !== 'battle') game.tick(dt); });
-title();
-window.__edin = { get game() { return game; }, opts, openFlow, decideFlow, muhurFlow, openCorePanel, get coreBusy() { return coreBusy; }, get view() { return stage.view; }, core, enterZone, hub, fight, shot: presentShot, cam: camState, perf: () => import('./ui/stage.js').then((m) => m.perfInfo()) };
+// Gömülü ejderha modelleri çözülmeden oyun başlamasın (yavaş telefonda kod modeline düşmesin); en çok 12 sn bekle.
+{ const ld = document.createElement('div'); ld.className = 'loadingNote';
+  ld.style.cssText = 'position:absolute;inset:auto 0 18px 0;text-align:center;color:#f3e2b5;font:600 15px system-ui;text-shadow:0 1px 3px #000;pointer-events:none';
+  ld.textContent = 'Ejderhalar uyanıyor…'; ui.appendChild(ld);
+  Promise.race([glbReady, new Promise((r) => setTimeout(r, 12000))]).then(() => { ld.remove(); title(); }); }
+window.__edin = { glbReady, get game() { return game; }, opts, openFlow, decideFlow, muhurFlow, openCorePanel, get coreBusy() { return coreBusy; }, get view() { return stage.view; }, core, enterZone, hub, fight, shot: presentShot, cam: camState, perf: () => import('./ui/stage.js').then((m) => m.perfInfo()) };
 
 // ---------- ?shot=gate|kiyi|bozkir|derin [&cam=play] : sunum kamerası (oyunda kullanılmaz) ----------
 const CINE = {
@@ -443,9 +450,9 @@ function presentShot(id, cam = 'cine') {
   if (cam === 'play') { resumeWorld(); return; }
   setView(worldView); tagLayer.style.display = 'none'; const c = CINE[id + '_' + cam] || CINE[id]; worldView.cine = { pos: { x: c.pos[0], y: c.pos[1], z: c.pos[2] }, look: { x: c.look[0], y: c.look[1], z: c.look[2] } };
 }
-{ const m = /[?&]shot=(\w+)/.exec(location.search); if (m) { const c = /[?&]cam=(\w+)/.exec(location.search); presentShot(m[1], c ? c[1] : 'cine'); } }
+{ const m = /[?&]shot=(\w+)/.exec(location.search); if (m) { const c = /[?&]cam=(\w+)/.exec(location.search); glbReady.then(() => presentShot(m[1], c ? c[1] : 'cine')); } }
 
 // ---------- ?gallery=1 : bütün modelleri yan yana gösterir (modelci ve test için) ----------
 if (/[?&]gallery=1/.test(location.search)) {
-  import('./ui/galleryView.js').then((m) => { S.clear(ui); setView(m.createGallery(ui)); });
+  Promise.all([import('./ui/galleryView.js'), glbReady]).then(([m]) => { S.clear(ui); setView(m.createGallery(ui)); });
 }

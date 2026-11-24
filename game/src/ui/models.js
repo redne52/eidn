@@ -7,6 +7,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { skinTex } from './models/skin.js';
 import { upgradeSurface, SURF_DEFAULTS } from './models/surface.js';
 import { instantiateGlb } from './glb.js';
+import { buildRigidGlbModel } from './models/rigidAnim.js';
+import { buildSkelGlbModel } from './models/skelAnim.js';
 
 // ---------- küçük tween motoru (tüm animasyonlar buradan) ----------
 const tweens = [];
@@ -614,7 +616,7 @@ export function getModel(id, stage = 3) {
   const reg = REG[id] || REG.basmu;
   const st = reg.st || (typeof stage === 'number' ? Math.max(1, Math.min(3, stage)) : 3);
   const glb = instantiateGlb(id, st);
-  if (glb) return fromGlb(id, st, reg, glb);
+  if (glb) { const gm = fromGlb(id, st, reg, glb); if (gm) return gm; }
   const group = new THREE.Group(); const root = pivot(group); const o = { root };
   const sc = (reg.s || 1) * (PLAYER.has(id) ? [0, 0.68, 0.85, 1][st] : 1);
   LOWQ = !PLAYER.has(id); let parts; try { parts = B[reg.b](o, st, reg.pal); } finally { LOWQ = false; }
@@ -653,6 +655,14 @@ function dragonMeta(model, C) {
 }
 
 function fromGlb(id, st, reg, glb) {
+  const lib = { tween, ease, shadowMat };
+  // iskeletli model: önce iskelet animatörü; kurulamazsa aynı modelin katı gövde sürümü; o da olmazsa kod modeli
+  if (glb.opts?.rigged) {
+    if (glb.opts.rigMap && typeof glb.opts.rigMap === 'object') { try { return buildSkelGlbModel(id, st, glb, lib, glb.opts.rigMap); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] İskelet animatörü kurulamadı, katı gövde kullanılacak:', err); } }
+    const again = instantiateGlb(id, st) || glb;
+    try { return buildRigidGlbModel(id, st, again, lib); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] GLB modeli kurulamadı, kod modeli kullanılacak:', err); return null; }
+  }
+  if (glb.opts?.rigid) { try { return buildRigidGlbModel(id, st, glb, lib); } catch (err) { if (typeof console !== 'undefined') console.warn('[Edin] GLB modeli kurulamadı, kod modeli kullanılacak:', err); return null; } }
   const group = new THREE.Group(); const root = pivot(group);
   root.add(glb.scene); glb.scene.rotation.y = glb.rotY || 0; root.scale.setScalar((glb.scale || 1) * (reg.s || 1));
   const height = glb.height || (MODEL_HEIGHT[id] || 2.1) * (reg.s || 1);

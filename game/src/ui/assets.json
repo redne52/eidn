@@ -1,4 +1,49 @@
 {
-  "_not": "Meshy / Hy 3D GLB modelleri buraya eklenir. Ornek: {\"id\": \"ugallu\", \"stage\": 3, \"url\": \"models/ugallu_3.glb\", \"height\": 2.1, \"scale\": 1, \"rotY\": 0}. stage yazilmazsa butun evreler icin kullanilir. Liste bosken oyun kodla uretilmis modelleri kullanir.",
-  "models": []
+  "_not": "GLB modelleri. Dosyalar game/assets/ altinda (tools/optimize_glb.mjs ile optimize edilir; kaynak GLB depoya girmez). lods: grafik ayarina gore dosya (0 Dusuk, 1 Orta, 2 Yuksek). fit: modelin kendi birimlerindeki olculer (rotY uygulandiktan sonra; boy, agiz, gogus, kalca, ayak); evre olcekleri stageScale ile kod modelinin boyuna esitlenir. rigged: iskeletli model, models/skelAnim.js ile kemik kemik oynatilir (rigMap: kemik haritasi, glbFiles.js'de baglanir); iskelet animatoru kurulamazsa ayni model katı govde (rigidAnim.js) olarak oynatilir, model hic yuklenemezse kodla uretilen model kullanilir.",
+  "models": [
+    {
+      "id": "ejder_ates",
+      "source": "Tripo, iskeletli (kullanici, 2026-11-23)",
+      "lods": {
+        "0": "ejder_ates_lo.glb",
+        "1": "ejder_ates_hi.glb",
+        "2": "ejder_ates_hi.glb"
+      },
+      "rotY": 1.5708,
+      "fit": {
+        "height": 0.859,
+        "mouth": [
+          0.12,
+          0.66,
+          0.31
+        ],
+        "chest": [
+          0.03,
+          0.47,
+          0.2
+        ],
+        "hip": [
+          0.0,
+          0.34,
+          0.12
+        ],
+        "foot": [
+          0.0,
+          0.0,
+          0.1
+        ]
+      },
+      "targetHeight": 2.0,
+      "stageScale": [
+        0.65,
+        0.85,
+        1.0
+      ],
+      "type": "ates",
+      "glowColor": "#ff5a1e",
+      "finisherFx": "fire",
+      "rigged": true,
+      "rigMap": "ates"
+    }
+  ]
 }
